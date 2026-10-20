@@ -1,0 +1,10 @@
+{
+  ApplicationName = FileViewer;
+  ApplicationDescription = "Native GNUstep file viewer";
+  NSPrincipalClass = NSApplication;
+  NSIcon = "FileViewer.png";
+  CFBundleIconFile = "FileViewer.png";
+  NSExecutable = FileViewer;
+  CFBundleIdentifier = "org.gnustep.FileViewer";
+  CFBundleVersion = "1.0";
+}

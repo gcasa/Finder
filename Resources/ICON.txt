@@ -1,0 +1,20 @@
+FileViewer application icon
+
+Generated with the built-in image_gen tool on 2026-10-20.
+Original output copied without creative modification to Resources/FileViewer.png.
+1254 x 1254 RGBA PNG; real transparent background. GNUstep scales the bundled image.
+No external artwork or reference image was supplied.
+
+Complete prompt:
+Use case: logo-brand. Asset type: native GNUstep desktop application icon for
+FileViewer, a file manager. Create one original square icon on a genuinely
+transparent background: an open warm ochre folder containing two crisp ivory
+document sheets, with a small blue magnifying lens in front to communicate
+browsing and inspecting files. Classic thoughtfully crafted Unix desktop icon,
+restrained dimensional shading, clear substantial silhouette and bold shapes
+that remain readable at 48 and 64 pixels. Center the complete object with a little
+transparent padding. No text, letters, numbers, watermark, enclosing app tile,
+mascot, faces, Apple Finder logo, or proprietary artwork. Clean edges and simple
+detail, suitable on both light and dark desktop themes.
+
+Tool setting: transparent_background=true

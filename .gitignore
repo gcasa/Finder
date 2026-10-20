@@ -1,0 +1,10 @@
+obj/
+FileViewer.app/
+*.d
+core
+*.o
+*.d
+*.app
+.DS_Store
+build
+obj
