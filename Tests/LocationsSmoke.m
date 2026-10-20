@@ -1,3 +1,22 @@
+/*
+ * This file is part of FileViewer.
+ * Copyright (C) 2026 FileViewer contributors
+ *
+ * FileViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3,
+ * as published by the Free Software Foundation.
+ *
+ * FileViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with FileViewer. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
 #import <AppKit/AppKit.h>
 #import "FVWindow.h"
 #import "FVLauncher.h"
@@ -123,6 +142,14 @@ MenuForItem (NSOutlineView *outline, id item)
   return MenuAtPoint (outline, NSMakePoint (NSMidX (rect), NSMidY (rect)));
 }
 
+static NSArray *networkFixture;
+
+static id
+FixtureNetworkPaths (id mounts, SEL selector, ...)
+{
+  return networkFixture ? networkFixture : [NSArray array];
+}
+
 static id
 FixtureVolumes (id workspace, SEL selector, ...)
 {
@@ -164,6 +191,8 @@ main (void)
   CHECK (chmod ([binary fileSystemRepresentation], 0700) == 0);
   NSString *document = [root stringByAppendingPathComponent:@"a file.txt"];
   CHECK ([@"test" writeToFile:document atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+  Method networkMethod = class_getClassMethod ([FVMounts class], @selector (networkPaths));
+  IMP originalNetwork = method_setImplementation (networkMethod, FixtureNetworkPaths);
   FVWindow *window = [[FVWindow alloc] initWithPath:root];
   [window showWindow:nil];
   Tick (.3);
@@ -174,7 +203,7 @@ main (void)
       && [[[[[outline tableColumns] objectAtIndex:0] headerCell] stringValue] isEqual:@"Locations"]);
   CHECK ([outline gridStyleMask] == NSTableViewGridNone);
   id source = [outline dataSource];
-  CHECK ([source outlineView:outline numberOfChildrenOfItem:nil] == 3);
+  CHECK ([source outlineView:outline numberOfChildrenOfItem:nil] == 4);
   id common = [source outlineView:outline child:0 ofItem:nil];
   id favorites = [source outlineView:outline child:1 ofItem:nil];
   id mounted = [source outlineView:outline child:2 ofItem:nil];
@@ -201,7 +230,7 @@ main (void)
   CHECK ([source outlineView:outline numberOfChildrenOfItem:favorites] == 0);
   [outline collapseItem:common];
   [outline collapseItem:mounted];
-  CHECK ([outline numberOfRows] == 3);
+  CHECK ([outline numberOfRows] == 4);
   [outline expandItem:common];
   CHECK ([outline numberOfRows] > 3);
   FVTestDrag *drag = [FVTestDrag new];
@@ -388,7 +417,85 @@ main (void)
   [application release];
   [[secondWindow window] close];
   [secondWindow release];
+  [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
+  /* Parse actual mount-table syntax, including escapes and remote FUSE sources. */
+  NSString *mountTable = [root stringByAppendingPathComponent:@"mountinfo"];
+  NSString *mountText = @"1 0 8:1 / / rw - ext4 /dev/sda1 rw\n"
+      @"2 1 0:2 / /mnt/nfs rw - nfs4 host:/export rw\n"
+      @"3 1 0:3 / /mnt/smb rw - cifs //host/share rw\n"
+      @"4 1 0:4 / /mnt/ssh rw - fuse.sshfs user@host:/files rw\n"
+      @"5 1 0:5 / /mnt/web\\040dav rw - fuse.davfs https://host/files rw\n"
+      @"6 1 0:6 / /mnt/custom rw - fuse.custom remote:bucket rw\n"
+      @"7 1 0:7 / /run/user/1000/gvfs rw - fuse.gvfsd-fuse gvfsd-fuse rw\n"
+      @"8 1 0:8 / /mnt/local-fuse rw - fuse.encfs /local/storage rw\n"
+      @"9 1 0:9 / /mnt/hidden rw - nfs host:/hidden rw\n"
+      @"10 1 8:2 / /mnt/hidden rw - ext4 /dev/sdb1 rw\n";
+  CHECK ([mountText writeToFile:mountTable atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+  NSArray *parsed = [FVMounts networkPathsFromMountTable:mountTable];
+  CHECK ([parsed count] == 6);
+  CHECK ([parsed containsObject:@"/mnt/nfs"]);
+  CHECK ([parsed containsObject:@"/mnt/smb"]);
+  CHECK ([parsed containsObject:@"/mnt/ssh"]);
+  CHECK ([parsed containsObject:@"/mnt/web dav"]);
+  CHECK ([parsed containsObject:@"/mnt/custom"]);
+  CHECK ([parsed containsObject:@"/run/user/1000/gvfs"]);
+  CHECK (![[FVMounts networkPathsFromMountTable:@"/nonexistent/mountinfo"] count]);
+  CHECK ([@"remote /mnt/unknown customfs rw,_netdev 0 0\n"
+      writeToFile:mountTable atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+  CHECK ([[FVMounts networkPathsFromMountTable:mountTable] containsObject:@"/mnt/unknown"]);
+
+  /* Every section respects /run exclusion; polling must use the same filter. */
+  [defaults setObject:[NSArray arrayWithObjects:@"/run", @"/run/media/disk", @"/runner", nil]
+               forKey:@"Favorites"];
+  networkFixture = [NSArray arrayWithObjects:@"/run/media/disk", root, nil];
+  [window performSelector:@selector (checkDirectory:) withObject:nil];
+  id network = [source outlineView:outline child:3 ofItem:nil];
+  CHECK ([[network objectForKey:@"title"] isEqual:@"Network"]);
+  CHECK ([outline isItemExpanded:network]);
+  CHECK ([[[network objectForKey:@"children"] valueForKey:@"path"]
+      isEqual:[NSArray arrayWithObject:root]]);
+  CHECK ([[[[[window valueForKey:@"places"] objectAtIndex:1] objectForKey:@"children"]
+      valueForKey:@"path"] isEqual:[NSArray arrayWithObject:@"/runner"]]);
+  id unchangedPlaces = [window valueForKey:@"places"];
+  [window performSelector:@selector (checkDirectory:) withObject:nil];
+  CHECK ([window valueForKey:@"places"] == unchangedPlaces);
+  CHECK (![MountedPaths (window) containsObject:@"/run/media/disk"]);
+  [defaults setBool:NO forKey:@"ExcludeRunFilesystems"];
+  [window performSelector:@selector (rebuildPlaces)];
+  CHECK (![MountedPaths (window) containsObject:@"/run/media/disk"]);
+  network = [source outlineView:outline child:3 ofItem:nil];
+  CHECK ([[[network objectForKey:@"children"] valueForKey:@"path"] isEqual:networkFixture]);
+  CHECK ([[[[window valueForKey:@"places"] objectAtIndex:1] objectForKey:@"children"] count] == 3);
+  [defaults setBool:YES forKey:@"ExcludeRunFilesystems"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVLocationPreferencesChanged" object:nil];
+  CHECK ([[[[[window valueForKey:@"places"] objectAtIndex:3] objectForKey:@"children"]
+      valueForKey:@"path"] isEqual:[NSArray arrayWithObject:root]]);
+  CHECK ([[defaults arrayForKey:@"Favorites"] count] == 3);
+  [defaults setBool:NO forKey:@"ExcludeRunFilesystems"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVLocationPreferencesChanged" object:nil];
+  network = [source outlineView:outline child:3 ofItem:nil];
+  [outline collapseItem:[source outlineView:outline child:0 ofItem:nil]];
+  [outline collapseItem:[source outlineView:outline child:1 ofItem:nil]];
+  NSView *networkView = [[window window] contentView];
+  [networkView display];
+  snapshot = [networkView bitmapImageRepForCachingDisplayInRect:[networkView bounds]];
+  [networkView cacheDisplayInRect:[networkView bounds] toBitmapImageRep:snapshot];
+  CHECK ([[snapshot representationUsingType:NSPNGFileType properties:[NSDictionary dictionary]]
+      writeToFile:@"obj/tests/network-locations.png" atomically:YES]);
+  id networkItem = [[network objectForKey:@"children"] objectAtIndex:1];
+  CHECK (MenuForItem (outline, networkItem) == nil);
+  [outline selectRowIndexes:[NSIndexSet indexSetWithIndex:[outline rowForItem:networkItem]]
+       byExtendingSelection:NO];
+  [window sidebarClicked:outline];
+  CHECK ([[window valueForKey:@"path"] isEqual:root]);
+  [outline collapseItem:network];
+  networkFixture = [NSArray array];
+  [window performSelector:@selector (checkDirectory:) withObject:nil];
+  network = [source outlineView:outline child:3 ofItem:nil];
+  CHECK (![[network objectForKey:@"children"] count]);
+  CHECK (![outline isItemExpanded:network]);
   method_setImplementation (volumesMethod, originalVolumes);
+  method_setImplementation (networkMethod, originalNetwork);
   [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
   [[window window] close];
   Tick (.1);
@@ -400,3 +507,4 @@ main (void)
   [pool drain];
   return 0;
 }
+

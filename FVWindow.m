@@ -1,3 +1,22 @@
+/*
+ * This file is part of FileViewer.
+ * Copyright (C) 2026 FileViewer contributors
+ *
+ * FileViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3,
+ * as published by the Free Software Foundation.
+ *
+ * FileViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with FileViewer. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
 #import "FVWindow.h"
 #import "FVApplication.h"
 #import "FVOperations.h"
@@ -12,6 +31,26 @@
 - (NSInteger)runDialog:(FVDialog *)dialog;
 - (void)updateActivity;
 @end
+
+/* Apply the same visibility policy to every Locations section and mount poll. */
+static NSArray *
+FVVisibleLocationPaths (NSArray *paths)
+{
+  NSMutableArray *visible = [NSMutableArray array];
+  BOOL excludeRun = FVExcludeRunFilesystems ();
+  NSUInteger i;
+  for (i = 0; i < [paths count]; i++)
+    {
+      id path = [paths objectAtIndex:i];
+      if (![path isKindOfClass:[NSString class]])
+        continue;
+      NSString *standard = [path stringByStandardizingPath];
+      if (excludeRun && ([standard isEqual:@"/run"] || [standard hasPrefix:@"/run/"]))
+        continue;
+      [visible addObject:path];
+    }
+  return visible;
+}
 
 static NSString *
 FVFileStamp (NSString *file, BOOL follow)
@@ -38,6 +77,7 @@ FVLabel (NSRect frame, NSString *text)
   [field setStringValue:text];
   return field;
 }
+
 static id
 FVMetadata (NSDictionary *attributes, NSString *key)
 {
@@ -931,14 +971,18 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
             [placeIcons setObject:[images objectAtIndex:i] forKey:candidate];
         }
     }
+  NSArray *networkPaths = FVVisibleLocationPaths ([FVMounts networkPaths]);
+  NSMutableArray *network = [NSMutableArray array];
+  for (i = 0; i < [networkPaths count]; i++)
+    [network addObject:[NSDictionary dictionaryWithObjectsAndKeys:
+        [networkPaths objectAtIndex:i], @"path", @"network", @"group", nil]];
   NSMutableArray *mounted = [NSMutableArray array];
   NSMutableSet *mountedPaths = [NSMutableSet set];
-  NSArray *volumes = [[NSWorkspace sharedWorkspace] mountedLocalVolumePaths];
-  BOOL excludeRun = FVExcludeRunFilesystems ();
+  NSArray *volumes = FVVisibleLocationPaths ([[NSWorkspace sharedWorkspace] mountedLocalVolumePaths]);
   for (i = 0; i < [volumes count]; i++)
     {
       NSString *volume = [volumes objectAtIndex:i];
-      if (excludeRun && ([volume isEqual:@"/run"] || [volume hasPrefix:@"/run/"]))
+      if ([networkPaths containsObject:volume])
         continue;
       if ([volume hasPrefix:@"/proc"] || [volume hasPrefix:@"/sys"]
           || ([volume hasPrefix:@"/dev"] && ![volume isEqual:@"/dev/shm"]))
@@ -954,6 +998,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   if ([[NSFileManager defaultManager] fileExistsAtPath:trash])
     [p addObject:trash];
   [p removeObjectsInArray:[mountedPaths allObjects]];
+  [p removeObjectsInArray:networkPaths];
+  [p setArray:FVVisibleLocationPaths (p)];
   NSMutableArray *common = [NSMutableArray array];
   NSMutableArray *favorites = [NSMutableArray array];
   for (i = 0; i < [p count]; i++)
@@ -961,7 +1007,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
         [p objectAtIndex:i], @"path", @"common", @"group", nil]];
   [common addObject:[NSDictionary dictionaryWithObjectsAndKeys:
       FVRecentsLocation, @"path", @"Recents", @"title", @"recent", @"group", nil]];
-  NSArray *saved = [[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"];
+  NSArray *saved = FVVisibleLocationPaths ([[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"]);
   for (i = 0; i < [saved count]; i++)
     if ([[saved objectAtIndex:i] isKindOfClass:[NSString class]])
       [favorites addObject:[NSDictionary dictionaryWithObjectsAndKeys:
@@ -970,6 +1016,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   BOOL commonExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:0]];
   BOOL favoritesExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:1]];
   BOOL mountedExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:2]];
+  BOOL networkExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:3]];
   [places release];
   places = [[NSArray alloc] initWithObjects:
       [NSDictionary dictionaryWithObjectsAndKeys:@"Common Locations", @"title",
@@ -977,7 +1024,9 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [NSDictionary dictionaryWithObjectsAndKeys:@"Favorites", @"title",
                                                  favorites, @"children", nil],
       [NSDictionary dictionaryWithObjectsAndKeys:@"Mounted", @"title",
-                                                 mounted, @"children", nil], nil];
+                                                 mounted, @"children", nil],
+      [NSDictionary dictionaryWithObjectsAndKeys:@"Network", @"title",
+                                                 network, @"children", nil], nil];
   [sidebar reloadData];
   if (commonExpanded)
     [sidebar expandItem:[places objectAtIndex:0]];
@@ -985,6 +1034,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
     [sidebar expandItem:[places objectAtIndex:1]];
   if (mountedExpanded)
     [sidebar expandItem:[places objectAtIndex:2]];
+  if (networkExpanded)
+    [sidebar expandItem:[places objectAtIndex:3]];
 }
 
 - (void)navigate:(NSString *)value
@@ -1190,6 +1241,12 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   NSString *p = [item objectForKey:@"path"];
   NSString *name = p ? [placeIcons objectForKey:p] : nil;
   NSImage *image = name ? [NSImage imageNamed:name] : nil;
+  if ([[item objectForKey:@"group"] isEqual:@"network"])
+    {
+      /* Do not contact a possibly disconnected server just to draw its icon. */
+      [cell setImage:[NSImage imageNamed:NSImageNameNetwork]];
+      return;
+    }
   if ([p isEqual:FVRecentsLocation])
     {
       [cell setImage:FVToolbarImage (4)];
@@ -1234,8 +1291,11 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
     return NO;
   NSArray *saved = [[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"];
   NSMutableArray *favorites = [NSMutableArray arrayWithArray:saved ? saved : [NSArray array]];
-  NSUInteger insertion = item == [places objectAtIndex:1] && index >= 0
-                             ? MIN ((NSUInteger)index, [favorites count]) : [favorites count];
+  NSArray *visibleFavorites = [[places objectAtIndex:1] objectForKey:@"children"];
+  NSUInteger insertion = [favorites count];
+  if (item == [places objectAtIndex:1] && index >= 0
+      && (NSUInteger)index < [visibleFavorites count])
+    insertion = [favorites indexOfObject:[[visibleFavorites objectAtIndex:index] objectForKey:@"path"]];
   NSUInteger i;
   for (i = 0; i < [paths count]; i++)
     {
@@ -2373,6 +2433,9 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 /* Scan metadata off the UI thread, including every expanded browser folder. */
 - (void)checkDirectory:(NSTimer *)timer
 {
+  if (!closed && ![FVVisibleLocationPaths ([FVMounts networkPaths]) isEqual:
+      [[[places objectAtIndex:3] objectForKey:@"children"] valueForKey:@"path"]])
+    [self rebuildPlaces];
   if (closed || loading || operation || searching || monitorBusy)
     return;
   monitorBusy = YES;

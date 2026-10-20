@@ -8,4 +8,5 @@ FileViewer_HEADER_FILES = FVApplication.h FVWindow.h FVModel.h FVOperations.h FV
 FileViewer_RESOURCE_FILES = Resources/FileViewer.png
 FileViewer_APPLICATION_ICON = FileViewer.png
 FileViewer_OBJCFLAGS = -Wall -Wextra -Wno-unused-parameter
+ADDITIONAL_GUI_LIBS += -lmount
 include $(GNUSTEP_MAKEFILES)/application.make

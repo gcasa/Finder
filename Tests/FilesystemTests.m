@@ -1,3 +1,22 @@
+/*
+ * This file is part of FileViewer.
+ * Copyright (C) 2026 FileViewer contributors
+ *
+ * FileViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3,
+ * as published by the Free Software Foundation.
+ *
+ * FileViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with FileViewer. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
 #import <Foundation/Foundation.h>
 #import "FVOperations.h"
 #import "FVModel.h"
@@ -5,6 +24,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+
 static unsigned checks = 0;
 #define CHECK(x)                                                                                   \
   do                                                                                               \
@@ -22,12 +42,14 @@ Write (NSString *p, NSString *text)
 {
   CHECK ([text writeToFile:p atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
 }
+
 static BOOL
 Exists (NSString *p)
 {
   struct stat st;
   return lstat ([p fileSystemRepresentation], &st) == 0;
 }
+
 @interface FVReceiver : NSObject
 {
 @public
@@ -114,6 +136,7 @@ Wait (FVReceiver *receiver)
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];
   CHECK (receiver->done);
 }
+
 int
 main (void)
 {
@@ -450,3 +473,4 @@ main (void)
   [pool drain];
   return 0;
 }
+

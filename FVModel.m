@@ -1,6 +1,26 @@
+/*
+ * This file is part of FileViewer.
+ * Copyright (C) 2026 FileViewer contributors
+ *
+ * FileViewer is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3,
+ * as published by the Free Software Foundation.
+ *
+ * FileViewer is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with FileViewer. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
 #define _GNU_SOURCE 1
 #import "FVModel.h"
 #include <sys/stat.h>
+#include <libmount/libmount.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,6 +42,53 @@ FVExcludeRunFilesystems (void)
   id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"ExcludeRunFilesystems"];
   return value == nil || [value boolValue];
 }
+
+@implementation FVMounts
++ (NSArray *)networkPaths
+{
+  /* libmount merges kernel mounts with userspace mount options when available. */
+  return [self networkPathsFromMountTable:nil];
+}
+
++ (NSArray *)networkPathsFromMountTable:(NSString *)filename
+{
+  NSMutableSet *paths = [NSMutableSet set];
+  struct libmnt_table *table = mnt_new_table ();
+  struct libmnt_iter *iterator = mnt_new_iter (MNT_ITER_BACKWARD);
+  if (table && iterator
+      && mnt_table_parse_mtab (table, filename ? [filename fileSystemRepresentation] : NULL) == 0)
+    {
+      struct libmnt_fs *fs;
+      NSMutableSet *seen = [NSMutableSet set];
+      while (mnt_table_next_fs (table, iterator, &fs) == 0)
+        {
+          const char *target = mnt_fs_get_target (fs);
+          const char *type = mnt_fs_get_fstype (fs);
+          const char *source = mnt_fs_get_source (fs);
+          if (!target || !type)
+            continue;
+          NSString *path = [[NSFileManager defaultManager]
+              stringWithFileSystemRepresentation:target length:strlen (target)];
+          if (![path isAbsolutePath] || [seen containsObject:path])
+            continue;
+          /* An overmount hides older mounts at the same path. */
+          [seen addObject:path];
+          NSString *kind = [NSString stringWithUTF8String:type];
+          NSString *origin = source ? [NSString stringWithUTF8String:source] : @"";
+          BOOL remoteFuse = [kind hasPrefix:@"fuse"]
+              && ([origin rangeOfString:@":"].location != NSNotFound
+                  || [origin hasPrefix:@"//"]
+                  || [kind isEqual:@"fuse.gvfsd-fuse"]);
+          if (mnt_fs_is_netfs (fs) || mnt_fs_match_options (fs, "_netdev") || remoteFuse)
+            [paths addObject:path];
+        }
+    }
+  mnt_free_iter (iterator);
+  mnt_free_table (table);
+  return [[paths allObjects] sortedArrayUsingSelector:@selector (compare:)];
+}
+
+@end
 
 @interface FVRecentParser : NSObject
 {

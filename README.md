@@ -7,7 +7,8 @@ file associations, install services, or change global GNUstep configuration.
 ## Build and launch
 
 Prerequisites: GNUstep Make, Base and GUI development headers/libraries, an
-installed GUI backend, an Objective-C compiler, and an X display. This version's
+installed GUI backend, an Objective-C compiler, libmount development headers
+(`libmount-dev` on Debian), and an X display. This version's
 filesystem adapter targets Linux (`renameat2`, `O_NOFOLLOW`, `/proc/self/fd`, and
 POSIX stat timestamps). Other Unix systems need an equivalent platform adapter;
 unsupported atomic rename fails rather than falling back to overwriting rename.
@@ -51,20 +52,26 @@ Inspected development environment:
 - Back/Forward, Up, Home, Refresh and the view buttons are in the top navigation
   bar. The path popup contains clickable ancestors. Go to Folder accepts tilde
   expansion and absolute paths (relative paths are interpreted from the window).
-- The Locations outline has collapsible Common Locations, Favorites and Mounted groups,
+- The Locations outline has collapsible Common Locations, Favorites, Mounted and Network groups,
   with icons and no grid lines. Common locations include Home, existing
   Desktop/Documents/Downloads/Pictures/Music/Videos and the home Trash when it
   exists. Mounted volumes, including the root filesystem, appear under Mounted
   instead of Common Locations. Filesystems mounted at `/run` or beneath it are
   excluded by default. Preferences → Exclude filesystems mounted under /run
-  remembers your choice and updates all open windows immediately. This only
-  filters the Mounted group; you can still browse those paths directly.
+  remembers your choice and updates all open windows immediately. This applies to
+  every Locations section, including Network and Favorites; saved favorites
+  are preserved, and you can still browse those paths directly.
   Drag files, folders, or applications
   into the outline to save favorites without copying them. Click a favorite to
   open it; right-click a favorite and choose Remove from Favorites to remove
   that shortcut. Go → Remove Favorite removes the selected favorite. XDG
   `user-dirs.dirs` values using `$HOME` or absolute paths are recognized without
   executing that file. Missing personal directories are never created.
+- Network lists mounted remote filesystems using Linux mount information and
+  libmount classification, including remote FUSE mounts and mounts marked
+  `_netdev`. Entries appear only in Network, respect the `/run` exclusion preference, and
+  update automatically as mounts appear or disappear. Click an entry to browse
+  it. This lists existing mounts; it does not discover or mount remote servers.
 - Recents in Common Locations combines successful file opens in FileViewer with
   other applications' shared `recently-used.xbel` history under `XDG_DATA_HOME`
   (normally `~/.local/share`). Files appear newest first, with Last Accessed and
@@ -235,7 +242,7 @@ separate commands if the wrapper cannot connect to its X server:
 ```sh
 clang $(gnustep-config --objc-flags) -Wall -Wextra -Wno-unused-parameter -I. \
   Tests/GUISmoke.m FVWindow.m FVApplication.m FVModel.m FVOperations.m FVIconView.m FVLauncher.m FVThumbnails.m \
-  -o obj/tests/gui $(gnustep-config --gui-libs)
+  -o obj/tests/gui $(gnustep-config --gui-libs) -lmount
 xvfb-run -a ./obj/tests/gui
 ```
 
