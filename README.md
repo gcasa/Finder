@@ -72,6 +72,11 @@ Inspected development environment:
 - List view has name/icons, byte size, kind, modification time, permissions and
   full path. Click headers to sort or reverse sorting. Folders First is optional.
   Arrow keys navigate, typing selects by prefix, Return/double-click opens.
+- Hovering over a file in list, column or icon view shows its full filename.
+  Preferences → Show full filenames on hover is enabled by default, remembers
+  your choice, and updates all open windows immediately. Selecting an icon
+  always expands its label to show the full name, with rows below shifted down
+  to prevent overlap; this works even when hover tooltips are disabled.
 - The bottom-right status indicator shows current activity, such as Idle,
   Loading, Searching, Launching application, Waiting for input, file operations,
   and thumbnail generation. File counts and detailed progress remain on the left.
@@ -214,6 +219,7 @@ sh Tests/locations.sh
 sh Tests/launch.sh
 sh Tests/thumbnails.sh
 sh Tests/recents.sh
+sh Tests/filenames.sh
 ```
 
 `Tests/run.sh` builds Foundation-only tests and creates all destructive fixtures

@@ -7,7 +7,9 @@
   CGFloat tileSize;
   NSInteger anchor;
   NSPoint mouseDownPoint;
+  NSString *mouseDownPath;
   BOOL dragPending;
+  NSMutableArray *rowOffsets;
 }
 
 - (id)initWithOwner:(FVWindow *)controller;
@@ -15,4 +17,5 @@
 - (void)setSelection:(NSIndexSet *)indices;
 - (void)reload;
 - (void)resizeIcons:(CGFloat)delta;
+- (void)updateFileTooltips;
 @end

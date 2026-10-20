@@ -129,20 +129,26 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   if (!preferencesPanel)
     {
       preferencesPanel = [[NSPanel alloc]
-          initWithContentRect:NSMakeRect (0, 0, 430, 130)
+          initWithContentRect:NSMakeRect (0, 0, 430, 170)
                     styleMask:NSTitledWindowMask | NSClosableWindowMask
                       backing:NSBackingStoreBuffered defer:NO];
       [preferencesPanel setTitle:@"Preferences"];
       [preferencesPanel setReleasedWhenClosed:NO];
-      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 116, 390, 28)];
       [thumbnailCheckbox setButtonType:NSSwitchButton];
       [thumbnailCheckbox setTitle:@"Show thumbnails"];
       [thumbnailCheckbox setTarget:self];
       [thumbnailCheckbox setAction:@selector (toggleThumbnails:)];
       [[preferencesPanel contentView] addSubview:thumbnailCheckbox];
+      filenameTooltipCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      [filenameTooltipCheckbox setButtonType:NSSwitchButton];
+      [filenameTooltipCheckbox setTitle:@"Show full filenames on hover"];
+      [filenameTooltipCheckbox setTarget:self];
+      [filenameTooltipCheckbox setAction:@selector (toggleFilenameTooltips:)];
+      [[preferencesPanel contentView] addSubview:filenameTooltipCheckbox];
       NSTextField *label = [[[NSTextField alloc]
           initWithFrame:NSMakeRect (24, 20, 380, 45)] autorelease];
-      [label setStringValue:@"Preview images and movies in file views.\nChanges apply to all open windows."];
+      [label setStringValue:@"Changes apply to all open windows."];
       [label setEditable:NO];
       [label setSelectable:NO];
       [label setBordered:NO];
@@ -152,6 +158,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
       [preferencesPanel center];
     }
   [thumbnailCheckbox setState:[FVThumbnailOperation enabled] ? NSOnState : NSOffState];
+  [filenameTooltipCheckbox setState:FVFilenameTooltipsEnabled () ? NSOnState : NSOffState];
   [preferencesPanel makeKeyAndOrderFront:self];
 }
 
@@ -163,9 +170,18 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
                                                     object:self];
 }
 
+- (void)toggleFilenameTooltips:(id)sender
+{
+  [[NSUserDefaults standardUserDefaults] setBool:[sender state] == NSOnState
+                                         forKey:@"ShowFilenameTooltips"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVFilenameTooltipsChanged"
+                                                    object:self];
+}
+
 - (void)dealloc
 {
   [thumbnailCheckbox release];
+  [filenameTooltipCheckbox release];
   [preferencesPanel release];
   [windows release];
   [pendingPaths release];

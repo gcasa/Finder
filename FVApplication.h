@@ -6,6 +6,7 @@
   BOOL launched;
   NSPanel *preferencesPanel;
   NSButton *thumbnailCheckbox;
+  NSButton *filenameTooltipCheckbox;
 }
 
 - (void)newWindow:(id)sender;

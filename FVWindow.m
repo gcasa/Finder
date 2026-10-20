@@ -463,9 +463,42 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   NSTimeInterval lastTyped;
 }
 
+- (void)updateFileTooltips;
 @end
 
 @implementation FVTableView
+- (void)updateFileTooltips
+{
+  [self removeAllToolTips];
+  if (!FVFilenameTooltipsEnabled ())
+    return;
+  NSInteger row;
+  for (row = 0; row < [self numberOfRows]; row++)
+    [self addToolTipRect:[self rectOfRow:row] owner:self userData:NULL];
+}
+
+- (NSString *)view:(NSView *)view stringForToolTip:(NSToolTipTag)tag
+             point:(NSPoint)point userData:(void *)data
+{
+  NSInteger row = [self rowAtPoint:point];
+  if (!FVFilenameTooltipsEnabled () || row < 0 || row >= [self numberOfRows])
+    return nil;
+  return [[self dataSource] tableView:self
+      objectValueForTableColumn:[self tableColumnWithIdentifier:@"name"] row:row];
+}
+
+- (void)reloadData
+{
+  [super reloadData];
+  [self updateFileTooltips];
+}
+
+- (void)setFrameSize:(NSSize)size
+{
+  [super setFrameSize:size];
+  [self updateFileTooltips];
+}
+
 - (void)keyDown:(NSEvent *)event
 {
   NSString *text = [event charactersIgnoringModifiers];
@@ -514,9 +547,35 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
    file drag through writeRowsWithIndexes. Keep native matrix click handling
    and add only the missing drag initiation. */
 @interface FVBrowserMatrix : NSMatrix
+- (void)updateFileTooltips;
 @end
 
 @implementation FVBrowserMatrix
+- (void)updateFileTooltips
+{
+  [self removeAllToolTips];
+  if (!FVFilenameTooltipsEnabled ())
+    return;
+  NSInteger row;
+  for (row = 0; row < [self numberOfRows]; row++)
+    [self addToolTipRect:[self cellFrameAtRow:row column:0] owner:self userData:NULL];
+}
+
+- (NSString *)view:(NSView *)view stringForToolTip:(NSToolTipTag)tag
+             point:(NSPoint)point userData:(void *)data
+{
+  NSInteger row, column;
+  if (!FVFilenameTooltipsEnabled () || ![self getRow:&row column:&column forPoint:point])
+    return nil;
+  return [[[self cellAtRow:row column:column] representedObject] lastPathComponent];
+}
+
+- (void)setFrameSize:(NSSize)size
+{
+  [super setFrameSize:size];
+  [self updateFileTooltips];
+}
+
 - (void)mouseDown:(NSEvent *)event
 {
   NSInteger row, column;
@@ -683,6 +742,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
               name:@"FVThumbnailPreferencesChanged" object:nil];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (recentsChanged:) name:@"FVRecentsChanged" object:nil];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (filenameTooltipsChanged:) name:@"FVFilenameTooltipsChanged" object:nil];
       browserRows = [NSMutableDictionary new];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
       NSView *content = [window contentView];
@@ -1541,6 +1602,15 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   [self redrawThumbnails];
 }
 
+- (void)filenameTooltipsChanged:(NSNotification *)notification
+{
+  [(FVTableView *)table updateFileTooltips];
+  [icons updateFileTooltips];
+  NSInteger column;
+  for (column = 0; browser && column <= [browser lastColumn]; column++)
+    [(FVBrowserMatrix *)[browser matrixInColumn:column] updateFileTooltips];
+}
+
 - (void)redrawThumbnails
 {
   [table setNeedsDisplay:YES];
@@ -2047,6 +2117,13 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   mode = 2;
   [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:@"ViewMode"];
   [browser removeFromSuperview];
+  /* GNUstep may defer releasing the old header clip view. Clear its document
+     before moving the header into another clip view on the next list switch. */
+  NSView *header = [table headerView];
+  NSView *headerClip = [header superview];
+  if ([headerClip isKindOfClass:[NSClipView class]]
+      && [(NSClipView *)headerClip documentView] == header)
+    [(NSClipView *)headerClip setDocumentView:nil];
   [scroll setDocumentView:icons];
   [host addSubview:scroll];
   [icons setSelection:selected];
@@ -2137,6 +2214,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [cell setLeaf:![item directory] ||
                     [[NSWorkspace sharedWorkspace] isFilePackageAtPath:[item path]]];
     }
+  [(FVBrowserMatrix *)matrix updateFileTooltips];
 }
 
 - (void)loadBrowserFolder:(NSDictionary *)request

@@ -8,10 +8,12 @@
     {
       owner = controller;
       selection = [NSMutableIndexSet new];
+      rowOffsets = [NSMutableArray new];
       tileSize = 112;
       anchor = 0;
       [self setAutoresizingMask:NSViewWidthSizable];
       [self registerForDraggedTypes:[NSArray arrayWithObject:NSFilenamesPboardType]];
+      [self reload];
     }
   return self;
 }
@@ -19,6 +21,8 @@
 - (void)dealloc
 {
   [selection release];
+  [rowOffsets release];
+  [mouseDownPath release];
   [super dealloc];
 }
 
@@ -40,17 +44,76 @@
 - (NSRect)rectForIndex:(NSUInteger)i
 {
   NSInteger cols = [self columns];
-  return NSMakeRect ((i % cols) * tileSize, (i / cols) * tileSize, tileSize, tileSize);
+  NSUInteger row = i / cols;
+  CGFloat top = row < [rowOffsets count] ? [[rowOffsets objectAtIndex:row] doubleValue]
+                                       : row * tileSize;
+  CGFloat bottom = row + 1 < [rowOffsets count]
+                       ? [[rowOffsets objectAtIndex:row + 1] doubleValue] : top + tileSize;
+  return NSMakeRect ((i % cols) * tileSize, top, tileSize, bottom - top);
+}
+
+- (NSDictionary *)labelAttributesForSelection:(BOOL)selected
+{
+  NSMutableParagraphStyle *style = [[[NSMutableParagraphStyle alloc] init] autorelease];
+  [style setAlignment:NSCenterTextAlignment];
+  [style setLineBreakMode:selected ? NSLineBreakByWordWrapping : NSLineBreakByTruncatingMiddle];
+  return [NSDictionary dictionaryWithObjectsAndKeys:
+      [NSFont systemFontOfSize:[NSFont systemFontSize]], NSFontAttributeName,
+      selected ? [NSColor selectedControlTextColor] : [NSColor controlTextColor],
+      NSForegroundColorAttributeName, style, NSParagraphStyleAttributeName, nil];
 }
 
 - (void)reload
 {
   NSUInteger count = [[owner items] count];
   [selection removeIndexesInRange:NSMakeRange (count, NSUIntegerMax - count)];
-  CGFloat height = MAX ([[self enclosingScrollView] contentSize].height,
-                        ((count + [self columns] - 1) / [self columns]) * tileSize);
-  [self setFrameSize:NSMakeSize ([[self enclosingScrollView] contentSize].width, height)];
+  NSScrollView *scroll = [self enclosingScrollView];
+  CGFloat width = scroll ? [scroll contentSize].width : [self bounds].size.width;
+  NSUInteger cols = MAX (1, (NSUInteger)(width / tileSize));
+  [rowOffsets removeAllObjects];
+  CGFloat height = 0;
+  NSUInteger first;
+  NSDictionary *attrs = [self labelAttributesForSelection:YES];
+  for (first = 0; first < count; first += cols)
+    {
+      [rowOffsets addObject:[NSNumber numberWithDouble:height]];
+      CGFloat rowHeight = tileSize;
+      NSUInteger i;
+      for (i = first; i < MIN (first + cols, count); i++)
+        if ([selection containsIndex:i])
+          {
+            NSString *name = [[[owner items] objectAtIndex:i] name];
+            NSRect text = [name boundingRectWithSize:NSMakeSize (tileSize - 10, 100000)
+                options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                attributes:attrs];
+            rowHeight = MAX (rowHeight, tileSize * .48 + 15 + ceil (text.size.height) + 8);
+          }
+      height += rowHeight;
+    }
+  [rowOffsets addObject:[NSNumber numberWithDouble:height]];
+  height = MAX (scroll ? [scroll contentSize].height : 0, height);
+  [self setFrameSize:NSMakeSize (width, height)];
+  [self updateFileTooltips];
   [self setNeedsDisplay:YES];
+}
+
+- (void)updateFileTooltips
+{
+  [self removeAllToolTips];
+  if (!FVFilenameTooltipsEnabled ())
+    return;
+  NSUInteger i;
+  for (i = 0; i < [[owner items] count]; i++)
+    [self addToolTipRect:[self rectForIndex:i] owner:self userData:NULL];
+}
+
+- (NSString *)view:(NSView *)view stringForToolTip:(NSToolTipTag)tag
+             point:(NSPoint)point userData:(void *)data
+{
+  NSInteger index = [self indexAtPoint:point];
+  if (!FVFilenameTooltipsEnabled () || index < 0)
+    return nil;
+  return [[[owner items] objectAtIndex:index] name];
 }
 
 - (void)resizeWithOldSuperviewSize:(NSSize)size
@@ -74,7 +137,7 @@
 {
   [selection removeAllIndexes];
   [selection addIndexes:indices];
-  [self setNeedsDisplay:YES];
+  [self reload];
 }
 
 - (void)drawRect:(NSRect)dirty
@@ -108,18 +171,9 @@
                 fraction:1.0
           respectFlipped:YES
                    hints:nil];
-      NSMutableParagraphStyle *style = [[[NSMutableParagraphStyle alloc] init] autorelease];
-      [style setAlignment:NSCenterTextAlignment];
-      [style setLineBreakMode:NSLineBreakByTruncatingMiddle];
-      NSDictionary *attrs = [NSDictionary
-          dictionaryWithObjectsAndKeys:[NSFont systemFontOfSize:[NSFont systemFontSize]],
-                                       NSFontAttributeName,
-                                       selected ? [NSColor selectedControlTextColor]
-                                                : [NSColor controlTextColor],
-                                       NSForegroundColorAttributeName, style,
-                                       NSParagraphStyleAttributeName, nil];
+      NSDictionary *attrs = [self labelAttributesForSelection:selected];
       [[item name] drawInRect:NSMakeRect (tile.origin.x + 5, tile.origin.y + size + 15,
-                                          tileSize - 10, tileSize - size - 17)
+                                          tileSize - 10, tile.size.height - size - 17)
                withAttributes:attrs];
     }
 }
@@ -128,7 +182,13 @@
 {
   if (p.x < 0 || p.y < 0 || p.x >= [self columns] * tileSize)
     return -1;
-  NSInteger i = (NSInteger)(p.y / tileSize) * [self columns] + (NSInteger)(p.x / tileSize);
+  NSUInteger row = 0;
+  while (row + 1 < [rowOffsets count]
+         && p.y >= [[rowOffsets objectAtIndex:row + 1] doubleValue])
+    row++;
+  NSInteger i = row * [self columns] + (NSInteger)(p.x / tileSize);
+  if ([rowOffsets count] < 2 || row + 1 >= [rowOffsets count])
+    return -1;
   return i >= 0 && i < (NSInteger)[[owner items] count] ? i : -1;
 }
 
@@ -136,6 +196,25 @@
 {
   [[self window] makeFirstResponder:self];
   NSInteger i = [self indexAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
+  NSPoint point = [event locationInWindow];
+  if ([event clickCount] == 2 && mouseDownPath
+      && fabs (point.x - mouseDownPoint.x) < 5 && fabs (point.y - mouseDownPoint.y) < 5)
+    {
+      /* Expanding/collapsing labels can move rows between the two clicks. */
+      NSUInteger index;
+      i = -1;
+      for (index = 0; index < [[owner items] count]; index++)
+        if ([[[[owner items] objectAtIndex:index] path] isEqual:mouseDownPath])
+          {
+            i = index;
+            break;
+          }
+    }
+  else
+    {
+      [mouseDownPath release];
+      mouseDownPath = i >= 0 ? [[[[owner items] objectAtIndex:i] path] copy] : nil;
+    }
   mouseDownPoint = [event locationInWindow];
   dragPending = i >= 0 && [event clickCount] == 1;
   if (i < 0)
@@ -156,7 +235,7 @@
       [selection addIndex:i];
       anchor = i;
     }
-  [self setNeedsDisplay:YES];
+  [self reload];
   [owner selectionChanged];
   if ([event clickCount] == 2 && i >= 0)
     [owner open:self];
@@ -203,6 +282,7 @@
     [selection removeAllIndexes];
   [selection addIndex:next];
   anchor = next;
+  [self reload];
   [self scrollRectToVisible:[self rectForIndex:next]];
   [self setNeedsDisplay:YES];
   [owner selectionChanged];
@@ -211,7 +291,7 @@
 - (void)selectAll:(id)sender
 {
   [selection addIndexesInRange:NSMakeRange (0, [[owner items] count])];
-  [self setNeedsDisplay:YES];
+  [self reload];
   [owner selectionChanged];
 }
 
