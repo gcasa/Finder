@@ -6,6 +6,179 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+
+NSString * const FVRecentsLocation = @"fileviewer:recents";
+
+@interface FVRecentParser : NSObject
+{
+  NSMutableArray *records;
+}
+
+- (NSArray *)records;
+@end
+
+@implementation FVRecentParser
+- (id)init
+{
+  if ((self = [super init]))
+    records = [NSMutableArray new];
+  return self;
+}
+
+- (void)parser:(NSXMLParser *)parser didStartElement:(NSString *)element
+    namespaceURI:(NSString *)uri qualifiedName:(NSString *)qualified
+      attributes:(NSDictionary *)attributes
+{
+  if (![element isEqual:@"bookmark"])
+    return;
+  NSString *href = [attributes objectForKey:@"href"];
+  if (![href length])
+    return;
+  NSURL *url = [NSURL URLWithString:href];
+  if (![url isFileURL] || ([[url host] length] && ![[url host] isEqual:@"localhost"]))
+    return;
+  NSDate *date = nil;
+  NSArray *keys = [NSArray arrayWithObjects:@"visited", @"modified", @"added", nil];
+  NSUInteger i;
+  for (i = 0; i < [keys count]; i++)
+    {
+      NSString *value = [attributes objectForKey:[keys objectAtIndex:i]];
+      if (![value length])
+        continue;
+      NSDateFormatter *formatter = [[[NSDateFormatter alloc] init] autorelease];
+      [formatter setLocale:[[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"] autorelease]];
+      [formatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXXXX"];
+      NSDate *candidate = [formatter dateFromString:value];
+      if (!candidate)
+        {
+          [formatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssXXXXX"];
+          candidate = [formatter dateFromString:value];
+        }
+      if (candidate && (!date || [candidate compare:date] == NSOrderedDescending))
+        date = candidate;
+    }
+  if ([[url path] isAbsolutePath] && date)
+    [records addObject:[NSDictionary dictionaryWithObjectsAndKeys:
+        [[url path] stringByStandardizingPath], @"path", date, @"accessed", nil]];
+}
+
+- (NSArray *)records
+{
+  return records;
+}
+
+- (void)dealloc
+{
+  [records release];
+  [super dealloc];
+}
+
+@end
+
+@implementation FVRecents
++ (NSString *)sharedHistoryPath
+{
+  NSString *root = [[[NSProcessInfo processInfo] environment] objectForKey:@"XDG_DATA_HOME"];
+  if (![root isAbsolutePath])
+    root = [NSHomeDirectory () stringByAppendingPathComponent:@".local/share"];
+  return [root stringByAppendingPathComponent:@"recently-used.xbel"];
+}
+
++ (void)recordPath:(NSString *)value
+{
+  BOOL directory = NO;
+  if (![value isAbsolutePath]
+      || ![[NSFileManager defaultManager] fileExistsAtPath:value isDirectory:&directory]
+      || directory)
+    return;
+  value = [value stringByStandardizingPath];
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSMutableArray *records = [NSMutableArray arrayWithArray:
+      [defaults arrayForKey:@"RecentFiles"] ? [defaults arrayForKey:@"RecentFiles"] : [NSArray array]];
+  NSInteger i;
+  for (i = [records count] - 1; i >= 0; i--)
+    if ([[records objectAtIndex:i] isKindOfClass:[NSDictionary class]]
+        && [[[records objectAtIndex:i] objectForKey:@"path"] isEqual:value])
+      [records removeObjectAtIndex:i];
+  [records insertObject:[NSDictionary dictionaryWithObjectsAndKeys:
+      value, @"path", [NSDate date], @"accessed", nil] atIndex:0];
+  [defaults setObject:records forKey:@"RecentFiles"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVRecentsChanged" object:nil];
+}
+
++ (NSArray *)records
+{
+  NSMutableArray *records = [NSMutableArray arrayWithArray:
+      [[NSUserDefaults standardUserDefaults] arrayForKey:@"RecentFiles"]
+          ? [[NSUserDefaults standardUserDefaults] arrayForKey:@"RecentFiles"] : [NSArray array]];
+  NSData *data = [NSData dataWithContentsOfFile:[self sharedHistoryPath]];
+  if (data)
+    {
+      FVRecentParser *delegate = [[[FVRecentParser alloc] init] autorelease];
+      NSXMLParser *parser = [[[NSXMLParser alloc] initWithData:data] autorelease];
+      [parser setShouldResolveExternalEntities:NO];
+      [parser setDelegate:delegate];
+      if ([parser parse])
+        [records addObjectsFromArray:[delegate records]];
+    }
+  NSMutableDictionary *unique = [NSMutableDictionary dictionary];
+  NSUInteger i;
+  for (i = 0; i < [records count]; i++)
+    {
+      id record = [records objectAtIndex:i];
+      if (![record isKindOfClass:[NSDictionary class]])
+        continue;
+      NSString *file = [record objectForKey:@"path"];
+      NSDate *date = [record objectForKey:@"accessed"];
+      if (![file isKindOfClass:[NSString class]] || ![file isAbsolutePath]
+          || ![date isKindOfClass:[NSDate class]])
+        continue;
+      file = [file stringByStandardizingPath];
+      NSDictionary *existing = [unique objectForKey:file];
+      if (!existing || [date compare:[existing objectForKey:@"accessed"]] == NSOrderedDescending)
+        [unique setObject:[NSDictionary dictionaryWithObjectsAndKeys:
+            file, @"path", date, @"accessed", nil] forKey:file];
+    }
+  NSSortDescriptor *sort = [[[NSSortDescriptor alloc] initWithKey:@"accessed" ascending:NO] autorelease];
+  return [[unique allValues] sortedArrayUsingDescriptors:[NSArray arrayWithObject:sort]];
+}
+
+@end
+
+@interface FVRecentItem : FVItem
+{
+  NSDate *accessed;
+}
+
++ (id)itemWithRecord:(NSDictionary *)record;
+@end
+
+@implementation FVRecentItem
++ (id)itemWithRecord:(NSDictionary *)record
+{
+  FVRecentItem *item = (FVRecentItem *)[self itemAtPath:[record objectForKey:@"path"]];
+  item->accessed = [[record objectForKey:@"accessed"] retain];
+  return item;
+}
+
+- (NSDate *)accessedDate
+{
+  return accessed;
+}
+
+- (id)valueForColumn:(NSString *)key
+{
+  return [key isEqual:@"date"] ? [accessed description] : [super valueForColumn:key];
+}
+
+- (void)dealloc
+{
+  [accessed release];
+  [super dealloc];
+}
+
+@end
+
 @implementation FVItem
 + (FVItem *)itemAtPath:(NSString *)value
 {
@@ -61,6 +234,11 @@
 - (NSDictionary *)attributes
 {
   return attributes;
+}
+
+- (NSDate *)accessedDate
+{
+  return nil;
 }
 
 - (BOOL)directory
@@ -168,6 +346,27 @@
 - (void)run
 {
   NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  if ([path isEqual:FVRecentsLocation])
+    {
+      NSArray *records = [FVRecents records];
+      NSMutableArray *rows = [NSMutableArray array];
+      NSUInteger i;
+      for (i = 0; i < [records count] && ![self cancelled]; i++)
+        {
+          FVItem *item = [FVRecentItem itemWithRecord:[records objectAtIndex:i]];
+          if (![item attributes] || [item directory] || [[item kind] isEqual:@"Broken symbolic link"])
+            continue;
+          if ((!hidden && [[item name] hasPrefix:@"."])
+              || ([query length] && [[item name] rangeOfString:query
+                      options:NSCaseInsensitiveSearch].location == NSNotFound))
+            continue;
+          [rows addObject:item];
+        }
+      if (![self cancelled])
+        [self deliver:rows errors:[NSArray array] done:YES];
+      [pool drain];
+      return;
+    }
   NSMutableArray *pending = [NSMutableArray arrayWithObject:path];
   NSMutableSet *visited = [NSMutableSet set];
   NSMutableArray *batch = [NSMutableArray new];

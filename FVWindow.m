@@ -7,6 +7,12 @@
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 
+@class FVDialog;
+@interface FVWindow (Activity)
+- (NSInteger)runDialog:(FVDialog *)dialog;
+- (void)updateActivity;
+@end
+
 static NSString *
 FVFileStamp (NSString *file, BOOL follow)
 {
@@ -167,8 +173,8 @@ FVCompare (id lhs, id rhs, void *context)
     }
   else if ([key isEqual:@"date"])
     {
-      a = [[left attributes] objectForKey:NSFileModificationDate];
-      b = [[right attributes] objectForKey:NSFileModificationDate];
+      a = [left accessedDate] ? [left accessedDate] : [[left attributes] objectForKey:NSFileModificationDate];
+      b = [right accessedDate] ? [right accessedDate] : [[right attributes] objectForKey:NSFileModificationDate];
     }
   else
     {
@@ -417,14 +423,14 @@ FVCompare (id lhs, id rhs, void *context)
 @end
 
 static NSString *
-FVPrompt (NSString *title, NSString *value)
+FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 {
   FVDialog *dialog = [[[FVDialog alloc]
       initWithTitle:title
             message:title
               value:value ? value : @""
             buttons:[NSArray arrayWithObjects:@"OK", @"Cancel", nil]] autorelease];
-  return [dialog run] == 0 ? [dialog value] : nil;
+  return [owner runDialog:dialog] == 0 ? [dialog value] : nil;
 }
 
 @interface FVSidebarView : NSOutlineView
@@ -675,6 +681,8 @@ FVPrompt (NSString *title, NSString *value)
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (thumbnailPreferencesChanged:)
               name:@"FVThumbnailPreferencesChanged" object:nil];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (recentsChanged:) name:@"FVRecentsChanged" object:nil];
       browserRows = [NSMutableDictionary new];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
       NSView *content = [window contentView];
@@ -715,6 +723,7 @@ FVPrompt (NSString *title, NSString *value)
       [scroll setHasVerticalScroller:YES];
       [scroll setHasHorizontalScroller:YES];
       table = [[FVTableView alloc] initWithFrame:[host bounds]];
+      [table setGridStyleMask:NSTableViewGridNone];
       [table setAllowsMultipleSelection:YES];
       [table setVerticalMotionCanBeginDrag:YES];
       [table setDraggingSourceOperationMask:NSDragOperationCopy forLocal:YES];
@@ -774,9 +783,16 @@ FVPrompt (NSString *title, NSString *value)
       [sidebar registerForDraggedTypes:[NSArray arrayWithObject:NSFilenamesPboardType]];
       [sideScroll setDocumentView:sidebar];
       [content addSubview:sideScroll];
-      status = [FVLabel (NSMakeRect (10, 5, contentSize.width - 20, 24), @"Loading…") retain];
+      status = [FVLabel (NSMakeRect (10, 5, contentSize.width - 260, 24), @"Loading…") retain];
       [status setAutoresizingMask:NSViewWidthSizable];
+      [[status cell] setLineBreakMode:NSLineBreakByTruncatingTail];
       [content addSubview:status];
+      activityStatus = [FVLabel (NSMakeRect (contentSize.width - 240, 5, 230, 24),
+                                @"Idle") retain];
+      [activityStatus setAlignment:NSRightTextAlignment];
+      [activityStatus setAutoresizingMask:NSViewMinXMargin];
+      [[activityStatus cell] setLineBreakMode:NSLineBreakByTruncatingTail];
+      [content addSubview:activityStatus];
       [table registerForDraggedTypes:[NSArray arrayWithObject:NSFilenamesPboardType]];
       [self rebuildPlaces];
       [self navigate:value];
@@ -847,6 +863,8 @@ FVPrompt (NSString *title, NSString *value)
             [placeIcons setObject:[images objectAtIndex:i] forKey:candidate];
         }
     }
+  NSMutableArray *mounted = [NSMutableArray array];
+  NSMutableSet *mountedPaths = [NSMutableSet set];
   NSArray *volumes = [[NSWorkspace sharedWorkspace] mountedLocalVolumePaths];
   for (i = 0; i < [volumes count]; i++)
     {
@@ -854,17 +872,24 @@ FVPrompt (NSString *title, NSString *value)
       if ([volume hasPrefix:@"/proc"] || [volume hasPrefix:@"/sys"]
           || ([volume hasPrefix:@"/dev"] && ![volume isEqual:@"/dev/shm"]))
         continue;
-      if (![p containsObject:volume])
-        [p addObject:volume];
+      if (![mountedPaths containsObject:volume])
+        {
+          [mountedPaths addObject:volume];
+          [mounted addObject:[NSDictionary dictionaryWithObjectsAndKeys:
+              volume, @"path", @"mounted", @"group", nil]];
+        }
     }
   NSString *trash = [[FVOperations homeTrash] stringByAppendingPathComponent:@"files"];
   if ([[NSFileManager defaultManager] fileExistsAtPath:trash])
     [p addObject:trash];
+  [p removeObjectsInArray:[mountedPaths allObjects]];
   NSMutableArray *common = [NSMutableArray array];
   NSMutableArray *favorites = [NSMutableArray array];
   for (i = 0; i < [p count]; i++)
     [common addObject:[NSDictionary dictionaryWithObjectsAndKeys:
         [p objectAtIndex:i], @"path", @"common", @"group", nil]];
+  [common addObject:[NSDictionary dictionaryWithObjectsAndKeys:
+      FVRecentsLocation, @"path", @"Recents", @"title", @"recent", @"group", nil]];
   NSArray *saved = [[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"];
   for (i = 0; i < [saved count]; i++)
     if ([[saved objectAtIndex:i] isKindOfClass:[NSString class]])
@@ -873,23 +898,29 @@ FVPrompt (NSString *title, NSString *value)
   BOOL initial = places == nil;
   BOOL commonExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:0]];
   BOOL favoritesExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:1]];
+  BOOL mountedExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:2]];
   [places release];
   places = [[NSArray alloc] initWithObjects:
       [NSDictionary dictionaryWithObjectsAndKeys:@"Common Locations", @"title",
                                                  common, @"children", nil],
       [NSDictionary dictionaryWithObjectsAndKeys:@"Favorites", @"title",
-                                                 favorites, @"children", nil], nil];
+                                                 favorites, @"children", nil],
+      [NSDictionary dictionaryWithObjectsAndKeys:@"Mounted", @"title",
+                                                 mounted, @"children", nil], nil];
   [sidebar reloadData];
   if (commonExpanded)
     [sidebar expandItem:[places objectAtIndex:0]];
   if (favoritesExpanded)
     [sidebar expandItem:[places objectAtIndex:1]];
+  if (mountedExpanded)
+    [sidebar expandItem:[places objectAtIndex:2]];
 }
 
 - (void)navigate:(NSString *)value
 {
+  BOOL recents = [value isEqual:FVRecentsLocation];
   value = [value stringByExpandingTildeInPath];
-  if (![value isAbsolutePath])
+  if (!recents && ![value isAbsolutePath])
     value = [path ? path : NSHomeDirectory () stringByAppendingPathComponent:value];
   if (![value isEqual:path])
     {
@@ -904,8 +935,27 @@ FVPrompt (NSString *title, NSString *value)
   searching = NO;
   [browserRows removeAllObjects];
   [[NSUserDefaults standardUserDefaults] setObject:path forKey:@"LastPath"];
-  [[self window] setTitle:[@"FileViewer — " stringByAppendingString:path]];
+  [[self window] setTitle:[@"FileViewer — " stringByAppendingString:recents ? @"Recents" : path]];
   [breadcrumbs removeAllItems];
+  [[[table tableColumnWithIdentifier:@"date"] headerCell]
+      setStringValue:recents ? @"Last Accessed" : @"Modified"];
+  if (recents)
+    {
+      [breadcrumbs addItemWithTitle:@"Recents"];
+      [sortKey release];
+      sortKey = [@"date" copy];
+      ascending = NO;
+      [table moveColumn:[table columnWithIdentifier:@"date"] toColumn:1];
+      [table moveColumn:[table columnWithIdentifier:@"path"] toColumn:2];
+      if (mode == 1)
+        [self listMode:nil];
+      [spaceDescription release];
+      spaceDescription = nil;
+      [self refresh:nil];
+      return;
+    }
+  [table moveColumn:[table columnWithIdentifier:@"path"] toColumn:[[table tableColumns] count] - 1];
+  [table moveColumn:[table columnWithIdentifier:@"date"] toColumn:3];
   NSString *part = path;
   while ([part length])
     {
@@ -918,6 +968,12 @@ FVPrompt (NSString *title, NSString *value)
       part = next;
     }
   [self refresh:nil];
+}
+
+- (void)recentsChanged:(NSNotification *)notification
+{
+  if (!closed && [path isEqual:FVRecentsLocation])
+    [self refresh:nil];
 }
 
 - (void)refresh:(id)sender
@@ -949,11 +1005,13 @@ FVPrompt (NSString *title, NSString *value)
   [listing cancel];
   [listing release];
   generation++;
+  pendingBrowserLoads = 0;
   [items removeAllObjects];
   [browserRows removeAllObjects];
   [errors removeAllObjects];
   [table reloadData];
   loading = YES;
+  [self updateActivity];
   [status setStringValue:searching ? [@"Searching filenames beneath " stringByAppendingString:path]
                                    : @"Loading…"];
   listing = [[FVListing alloc] initWithPath:path
@@ -972,6 +1030,7 @@ FVPrompt (NSString *title, NSString *value)
   [items addObjectsFromArray:[result objectForKey:@"items"]];
   [errors addObjectsFromArray:[result objectForKey:@"errors"]];
   loading = ![[result objectForKey:@"done"] boolValue];
+  [self updateActivity];
   if (!loading)
     {
       [self sortItems];
@@ -1045,6 +1104,8 @@ FVPrompt (NSString *title, NSString *value)
   NSString *p = [item objectForKey:@"path"];
   if (!p)
     return [item objectForKey:@"title"];
+  if ([p isEqual:FVRecentsLocation])
+    return @"Recents";
   if ([p isEqual:NSHomeDirectory ()])
     return @"Home";
   if ([p isEqual:[[FVOperations homeTrash] stringByAppendingPathComponent:@"files"]])
@@ -1058,6 +1119,11 @@ FVPrompt (NSString *title, NSString *value)
   NSString *p = [item objectForKey:@"path"];
   NSString *name = p ? [placeIcons objectForKey:p] : nil;
   NSImage *image = name ? [NSImage imageNamed:name] : nil;
+  if ([p isEqual:FVRecentsLocation])
+    {
+      [cell setImage:FVToolbarImage (4)];
+      return;
+    }
   [cell setImage:p ? (image ? image : [self iconForPath:p]) : nil];
 }
 
@@ -1162,6 +1228,11 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)openPath:(NSString *)value
 {
+  if ([value isEqual:FVRecentsLocation])
+    {
+      [self navigate:value];
+      return;
+    }
   NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
   BOOL directory = NO;
   if (![[NSFileManager defaultManager] fileExistsAtPath:value isDirectory:&directory])
@@ -1197,7 +1268,7 @@ FVPrompt (NSString *title, NSString *value)
 {
   FVDialog *dialog = [[[FVDialog alloc]
       initWithApplications:[FVLauncher applicationsForFile:value] file:value] autorelease];
-  if ([dialog run] != 0)
+  if ([self runDialog:dialog] != 0)
     return nil;
   NSString *app = [dialog selectedApplication];
   if (app && [dialog apply])
@@ -1207,6 +1278,9 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)launchApplication:(NSString *)application file:(NSString *)value
 {
+  pendingLaunches++;
+  [self updateActivity];
+  [activityStatus displayIfNeeded];
   [status setStringValue:[NSString stringWithFormat:@"Opening %@…",
       [(value ? value : application) lastPathComponent]]];
   [FVLauncher launchApplication:application file:value
@@ -1215,6 +1289,11 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)launchFinished:(NSDictionary *)result
 {
+  if (pendingLaunches)
+    pendingLaunches--;
+  [self updateActivity];
+  if ([[result objectForKey:@"success"] boolValue])
+    [FVRecents recordPath:[result objectForKey:@"path"]];
   if (closed)
     return;
   if ([[result objectForKey:@"success"] boolValue])
@@ -1236,6 +1315,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)breadcrumb:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    return;
   [self navigate:[breadcrumbs titleOfSelectedItem]];
 }
 
@@ -1246,6 +1327,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)parent:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    return;
   [self navigate:[path stringByDeletingLastPathComponent]];
 }
 
@@ -1278,7 +1361,7 @@ FVPrompt (NSString *title, NSString *value)
 - (void)filterChanged:(id)sender
 {
   NSInteger pathColumn = [table columnWithIdentifier:@"path"];
-  if (pathColumn >= 0)
+  if (pathColumn >= 0 && ![path isEqual:FVRecentsLocation])
     [table moveColumn:pathColumn toColumn:[[table tableColumns] count] - 1];
   searching = NO;
   [self refresh:nil];
@@ -1370,6 +1453,46 @@ FVPrompt (NSString *title, NSString *value)
     [self selectionChanged];
 }
 
+- (void)updateActivity
+{
+  if (closed)
+    return;
+  NSString *message = @"Idle";
+  if (waitingForInput)
+    message = @"Waiting for input…";
+  else if (pendingLaunches)
+    message = @"Launching application…";
+  else if (operation)
+    message = operationActivity ? operationActivity : @"Working…";
+  else if (loading || pendingBrowserLoads)
+    message = searching ? @"Searching…" : @"Loading…";
+  else if (pendingThumbnails)
+    message = @"Generating thumbnails…";
+  if (![[activityStatus stringValue] isEqual:message])
+    {
+      [activityStatus setStringValue:message];
+      [activityStatus setToolTip:message];
+    }
+}
+
+- (NSInteger)runDialog:(FVDialog *)dialog
+{
+  waitingForInput = YES;
+  [self updateActivity];
+  [activityStatus displayIfNeeded];
+  NSInteger result;
+  @try
+    {
+      result = [dialog run];
+    }
+  @finally
+    {
+      waitingForInput = NO;
+      [self updateActivity];
+    }
+  return result;
+}
+
 - (NSImage *)iconForPath:(NSString *)value
 {
   if (!value)
@@ -1382,6 +1505,8 @@ FVPrompt (NSString *title, NSString *value)
       if (!closed && ![thumbnailRequests containsObject:value])
         {
           [thumbnailRequests addObject:value];
+          pendingThumbnails++;
+          [self updateActivity];
           FVThumbnailOperation *job = [[FVThumbnailOperation alloc]
               initWithPath:value generation:thumbnailGeneration target:self];
           [thumbnailQueue addOperation:job];
@@ -1406,6 +1531,8 @@ FVPrompt (NSString *title, NSString *value)
   [thumbnailQueue cancelAllOperations];
   [thumbnailCache removeAllObjects];
   [thumbnailRequests removeAllObjects];
+  pendingThumbnails = 0;
+  [self updateActivity];
 }
 
 - (void)thumbnailPreferencesChanged:(NSNotification *)notification
@@ -1428,6 +1555,9 @@ FVPrompt (NSString *title, NSString *value)
   if (closed || ![FVThumbnailOperation enabled]
       || [[result objectForKey:@"generation"] unsignedIntegerValue] != thumbnailGeneration)
     return;
+  if (pendingThumbnails)
+    pendingThumbnails--;
+  [self updateActivity];
   NSData *data = [result objectForKey:@"data"];
   NSImage *preview = data ? [[[NSImage alloc] initWithData:data] autorelease] : nil;
   if (preview && [preview isValid])
@@ -1450,7 +1580,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)go:(id)sender
 {
-  NSString *value = FVPrompt (@"Go to Folder (absolute path or ~)", path);
+  NSString *value = FVPrompt (self, @"Go to Folder (absolute path or ~)",
+                             [path isEqual:FVRecentsLocation] ? NSHomeDirectory () : path);
   if (value)
     [self navigate:value];
 }
@@ -1482,7 +1613,9 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)newFolder:(id)sender
 {
-  NSString *name = FVPrompt (@"New Folder", @"Untitled Folder");
+  if ([path isEqual:FVRecentsLocation])
+    return;
+  NSString *name = FVPrompt (self, @"New Folder", @"Untitled Folder");
   if (!name)
     return;
   if (![FVOperations validName:name])
@@ -1502,7 +1635,7 @@ FVPrompt (NSString *title, NSString *value)
   if ([selected count] != 1)
     return;
   NSString *source = [selected objectAtIndex:0];
-  NSString *name = FVPrompt (@"Rename", [source lastPathComponent]);
+  NSString *name = FVPrompt (self, @"Rename", [source lastPathComponent]);
   if (!name)
     return;
   if (![FVOperations validName:name])
@@ -1585,6 +1718,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)addFavorite:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    return;
   NSMutableArray *favorites = [NSMutableArray
       arrayWithArray:[[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"]
                          ? [[NSUserDefaults standardUserDefaults] arrayForKey:@"Favorites"]
@@ -1632,6 +1767,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)paste:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    return;
   NSPasteboard *pb = [NSPasteboard generalPasteboard];
   NSArray *paths = [pb propertyListForType:NSFilenamesPboardType];
   if (operation)
@@ -1648,6 +1785,8 @@ FVPrompt (NSString *title, NSString *value)
   NSPasteboard *pb = [NSPasteboard generalPasteboard];
   [pb declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
   NSArray *selected = [self selectedPaths];
+  if (![selected count] && [path isEqual:FVRecentsLocation])
+    return;
   [pb setString:[selected count] ? [selected componentsJoinedByString:@"\n"] : path
         forType:NSStringPboardType];
 }
@@ -1659,7 +1798,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)moveTo:(id)sender
 {
-  NSString *value = FVPrompt (@"Move selected files to folder", path);
+  NSString *value = FVPrompt (self, @"Move selected files to folder",
+                             [path isEqual:FVRecentsLocation] ? NSHomeDirectory () : path);
   if (value)
     [self runOperation:@"move"
                  paths:[self selectedPaths]
@@ -1685,6 +1825,11 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)runOperation:(NSString *)kind paths:(NSArray *)sources destination:(NSString *)destination
 {
+  if ([path isEqual:FVRecentsLocation]
+      && ([kind isEqual:@"mkdir"] || [kind isEqual:@"duplicate"]
+          || (([kind isEqual:@"copy"] || [kind isEqual:@"move"])
+              && (!destination || [destination isEqual:FVRecentsLocation]))))
+    return;
   if (operation || ![sources isKindOfClass:[NSArray class]] || ![sources count])
     return;
   NSUInteger sourceIndex;
@@ -1703,6 +1848,14 @@ FVPrompt (NSString *title, NSString *value)
                                          sources:sources
                                      destination:destination ? destination : path
                                           target:self];
+  NSDictionary *activities = [NSDictionary dictionaryWithObjectsAndKeys:
+      @"Copying…", @"copy", @"Moving…", @"move", @"Deleting…", @"delete",
+      @"Duplicating…", @"duplicate",
+      @"Moving to Trash…", @"trash", @"Renaming…", @"rename",
+      @"Creating folder…", @"mkdir", nil];
+  [operationActivity release];
+  operationActivity = [[activities objectForKey:kind] copy];
+  [self updateActivity];
   [operation start];
 }
 
@@ -1716,6 +1869,9 @@ FVPrompt (NSString *title, NSString *value)
 {
   [operation release];
   operation = nil;
+  [operationActivity release];
+  operationActivity = nil;
+  [self updateActivity];
   [undoRecords release];
   undoRecords = [[result objectForKey:@"undo"] copy];
   NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -1771,7 +1927,7 @@ FVPrompt (NSString *title, NSString *value)
               value:nil
             buttons:[NSArray arrayWithObjects:@"Keep Both", @"Skip", @"Replace", @"Cancel", nil]]
       autorelease];
-  NSInteger choice = [dialog run];
+  NSInteger choice = [self runDialog:dialog];
   NSArray *choices = [NSArray arrayWithObjects:@"keep", @"skip", @"replace", @"cancel", nil];
   [request setObject:choice >= 0 && choice < 4 ? [choices objectAtIndex:choice] : @"cancel"
               forKey:@"choice"];
@@ -1786,6 +1942,9 @@ FVPrompt (NSString *title, NSString *value)
                                          sources:undoRecords
                                      destination:nil
                                           target:self];
+  [operationActivity release];
+  operationActivity = [@"Undoing…" copy];
+  [self updateActivity];
   [operation start];
 }
 
@@ -1795,8 +1954,15 @@ FVPrompt (NSString *title, NSString *value)
   [listing release];
   listing = nil;
   generation++;
+  pendingBrowserLoads = 0;
   [operation cancel];
   loading = NO;
+  if (operation)
+    {
+      [operationActivity release];
+      operationActivity = [@"Cancelling…" copy];
+    }
+  [self updateActivity];
   [status setStringValue:@"Cancellation requested; completed items are retained"];
 }
 
@@ -1825,12 +1991,17 @@ FVPrompt (NSString *title, NSString *value)
   return [pb setPropertyList:paths forType:NSFilenamesPboardType];
 }
 
+- (BOOL)allowsFileDrop
+{
+  return !operation && ![path isEqual:FVRecentsLocation];
+}
+
 - (NSDragOperation)tableView:(NSTableView *)sender
                 validateDrop:(id<NSDraggingInfo>)info
                  proposedRow:(NSInteger)row
        proposedDropOperation:(NSTableViewDropOperation)op
 {
-  if (operation)
+  if (![self allowsFileDrop])
     return NSDragOperationNone;
   if (row >= 0 && row < (NSInteger)[items count] && [(FVItem *)[items objectAtIndex:row] directory])
     [table setDropRow:row dropOperation:NSTableViewDropOn];
@@ -1844,6 +2015,8 @@ FVPrompt (NSString *title, NSString *value)
               row:(NSInteger)row
     dropOperation:(NSTableViewDropOperation)op
 {
+  if (![self allowsFileDrop])
+    return NO;
   NSString *dest = row >= 0 && row < (NSInteger)[items count] &&
                            [(FVItem *)[items objectAtIndex:row] directory]
                        ? [[items objectAtIndex:row] path]
@@ -1893,6 +2066,11 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)columnMode:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    {
+      [self listMode:nil];
+      return;
+    }
   if (!browser)
     {
       browser = [[NSBrowser alloc] initWithFrame:[host bounds]];
@@ -1917,6 +2095,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (NSString *)browserFolder:(NSInteger)column
 {
+  if ([path isEqual:FVRecentsLocation])
+    return nil;
   if (column <= 0)
     return path;
   return [[browser selectedCellInColumn:column - 1] representedObject];
@@ -1932,6 +2112,8 @@ FVPrompt (NSString *title, NSString *value)
   NSArray *rows = column == 0 ? items : [browserRows objectForKey:folder];
   if (!rows)
     {
+      pendingBrowserLoads++;
+      [self updateActivity];
       [browserRows setObject:[NSArray array] forKey:folder];
       NSDictionary *request = [NSDictionary
           dictionaryWithObjectsAndKeys:folder, @"path", [NSNumber numberWithInteger:column],
@@ -1983,6 +2165,9 @@ FVPrompt (NSString *title, NSString *value)
 {
   if (closed || [[result objectForKey:@"generation"] unsignedIntegerValue] != generation)
     return;
+  if (pendingBrowserLoads)
+    pendingBrowserLoads--;
+  [self updateActivity];
   NSString *folder = [result objectForKey:@"path"];
   NSMutableArray *rows = [NSMutableArray arrayWithArray:[result objectForKey:@"rows"]];
   NSDictionary *options = [NSDictionary
@@ -2083,8 +2268,10 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)search:(id)sender
 {
+  if ([path isEqual:FVRecentsLocation])
+    return;
   NSString *query
-      = FVPrompt (@"Recursive filename search (does not search contents)", [filter stringValue]);
+      = FVPrompt (self, @"Recursive filename search (does not search contents)", [filter stringValue]);
   if (query)
     {
       [filter setStringValue:query];
@@ -2128,6 +2315,20 @@ FVPrompt (NSString *title, NSString *value)
     {
       NSString *folder = [folders objectAtIndex:i];
       NSMutableDictionary *entries = [NSMutableDictionary dictionary];
+      if ([folder isEqual:FVRecentsLocation])
+        {
+          NSArray *records = [FVRecents records];
+          NSUInteger j;
+          for (j = 0; j < [records count]; j++)
+            {
+              NSDictionary *record = [records objectAtIndex:j];
+              NSString *file = [record objectForKey:@"path"];
+              [entries setObject:[NSArray arrayWithObjects:[record objectForKey:@"accessed"],
+                  FVFileStamp (file, YES), nil] forKey:file];
+            }
+          [snapshots setObject:entries forKey:folder];
+          continue;
+        }
       [entries setObject:FVFileStamp (folder, YES) forKey:@""];
       NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:folder error:NULL];
       NSUInteger j;
@@ -2184,6 +2385,12 @@ FVPrompt (NSString *title, NSString *value)
 {
   SEL action = [item action];
   NSUInteger count = [[self selectedPaths] count];
+  if ([path isEqual:FVRecentsLocation]
+      && (action == @selector (newFolder:) || action == @selector (paste:)
+          || action == @selector (duplicate:) || action == @selector (addFavorite:)
+          || action == @selector (parent:) || action == @selector (search:)
+          || action == @selector (columnMode:) || (action == @selector (info:) && !count)))
+    return NO;
   if (action == @selector (toggleHidden:))
     [item setState:hidden ? NSOnState : NSOffState];
   if (action == @selector (toggleFolders:))
@@ -2248,6 +2455,8 @@ FVPrompt (NSString *title, NSString *value)
   [places release];
   [filter release];
   [status release];
+  [activityStatus release];
+  [operationActivity release];
   [breadcrumbs release];
   [scroll release];
   [host release];

@@ -1,4 +1,12 @@
 #import <Foundation/Foundation.h>
+extern NSString * const FVRecentsLocation;
+
+@interface FVRecents : NSObject
++ (void)recordPath:(NSString *)path;
++ (NSArray *)records;
++ (NSString *)sharedHistoryPath;
+@end
+
 @interface FVItem : NSObject
 {
   NSString *path;
@@ -12,6 +20,7 @@
 - (NSString *)path;
 - (NSString *)name;
 - (NSDictionary *)attributes;
+- (NSDate *)accessedDate;
 - (BOOL)directory;
 - (BOOL)link;
 - (NSString *)kind;

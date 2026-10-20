@@ -16,6 +16,12 @@
   NSMutableDictionary *placeIcons;
   NSSearchField *filter;
   NSTextField *status;
+  NSTextField *activityStatus;
+  NSString *operationActivity;
+  NSUInteger pendingLaunches;
+  NSUInteger pendingBrowserLoads;
+  NSUInteger pendingThumbnails;
+  BOOL waitingForInput;
   NSPopUpButton *breadcrumbs;
   NSScrollView *scroll;
   NSView *host;
@@ -58,6 +64,7 @@
 - (void)openPath:(NSString *)value;
 - (void)selectionChanged;
 - (NSImage *)iconForPath:(NSString *)value;
+- (BOOL)allowsFileDrop;
 - (void)runOperation:(NSString *)kind paths:(NSArray *)sources destination:(NSString *)destination;
 - (void)operationFinished:(NSDictionary *)result;
 - (void)operationProgress:(NSString *)message;

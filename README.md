@@ -12,8 +12,11 @@ filesystem adapter targets Linux (`renameat2`, `O_NOFOLLOW`, `/proc/self/fd`, an
 POSIX stat timestamps). Other Unix systems need an equivalent platform adapter;
 unsupported atomic rename fails rather than falling back to overwriting rename.
 
-Thumbnails use optional FFmpeg (`/usr/bin/ffmpeg` or `/usr/local/bin/ffmpeg`).
-Without it, files retain their normal icons.
+Movie thumbnails use optional `ffmpegthumbnailer` with embedded-artwork preference
+(`-m`), falling back to a video frame when artwork is absent. If the thumbnailer
+is unavailable or fails, FFmpeg extracts a frame. Image and audio-artwork previews
+use FFmpeg. Tools are located in `/usr/bin` or `/usr/local/bin`; unsupported files
+retain their normal icons.
 
 From this directory:
 
@@ -48,18 +51,30 @@ Inspected development environment:
 - Back/Forward, Up, Home, Refresh and the view buttons are in the top navigation
   bar. The path popup contains clickable ancestors. Go to Folder accepts tilde
   expansion and absolute paths (relative paths are interpreted from the window).
-- The Locations outline has collapsible Common Locations and Favorites groups,
+- The Locations outline has collapsible Common Locations, Favorites and Mounted groups,
   with icons and no grid lines. Common locations include Home, existing
-  Desktop/Documents/Downloads/Pictures/Music/Videos, root, discoverable data
-  volumes, and the home Trash when it exists. Drag files, folders, or applications
+  Desktop/Documents/Downloads/Pictures/Music/Videos and the home Trash when it
+  exists. Mounted volumes, including the root filesystem, appear under Mounted
+  instead of Common Locations. Drag files, folders, or applications
   into the outline to save favorites without copying them. Click a favorite to
   open it; right-click a favorite and choose Remove from Favorites to remove
   that shortcut. Go → Remove Favorite removes the selected favorite. XDG
   `user-dirs.dirs` values using `$HOME` or absolute paths are recognized without
   executing that file. Missing personal directories are never created.
+- Recents in Common Locations combines successful file opens in FileViewer with
+  other applications' shared `recently-used.xbel` history under `XDG_DATA_HOME`
+  (normally `~/.local/share`). Files appear newest first, with Last Accessed and
+  Full Path columns; duplicate paths, missing files and folders are omitted.
+  FileViewer's history persists across restarts. Selecting files and generating
+  thumbnails do not add history. Apps that do not publish shared history cannot
+  be included. Recents supports list/icons, filtering, opening and file actions;
+  it is a collection, so it cannot receive pasted files or new folders.
 - List view has name/icons, byte size, kind, modification time, permissions and
   full path. Click headers to sort or reverse sorting. Folders First is optional.
   Arrow keys navigate, typing selects by prefix, Return/double-click opens.
+- The bottom-right status indicator shows current activity, such as Idle,
+  Loading, Searching, Launching application, Waiting for input, file operations,
+  and thumbnail generation. File counts and detailed progress remain on the left.
 - Image and movie thumbnails are enabled by default in icon, list and column
   views. Audio files with embedded artwork can also show a preview. Preferences
   → Show thumbnails applies immediately to all open windows and remembers your
@@ -198,6 +213,7 @@ GNUstep implementation; native matrix selection remains in use for clicks.
 sh Tests/locations.sh
 sh Tests/launch.sh
 sh Tests/thumbnails.sh
+sh Tests/recents.sh
 ```
 
 `Tests/run.sh` builds Foundation-only tests and creates all destructive fixtures
@@ -218,8 +234,10 @@ observed results and unverified areas. Source builds without application warning
 Xvfb without a window manager emits harmless `_NET_WORKAREA` diagnostics. The
 managed development sandbox may also report that the real user's Defaults lock
 directory is not writable; normal desktop execution can persist preferences.
-The thumbnail tests additionally require FFmpeg and exercise image/movie
-decoding, damaged-media fallback, live invalidation, and the Preferences checkbox.
+The thumbnail tests require FFmpeg and ffmpegthumbnailer and exercise embedded
+movie artwork, frame fallback, damaged media, live invalidation, and Preferences.
+Recents tests use isolated shared history to check persistence, merging, ordering,
+filtering, navigation and file-action restrictions.
 
 ## Remaining limitations
 

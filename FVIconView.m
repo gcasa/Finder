@@ -249,11 +249,13 @@
 
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender
 {
-  return NSDragOperationCopy;
+  return [owner allowsFileDrop] ? NSDragOperationCopy : NSDragOperationNone;
 }
 
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender
 {
+  if (![owner allowsFileDrop])
+    return NO;
   NSArray *paths = [[sender draggingPasteboard] propertyListForType:NSFilenamesPboardType];
   NSInteger i = [self indexAtPoint:[self convertPoint:[sender draggingLocation] fromView:nil]];
   NSString *destination = nil;

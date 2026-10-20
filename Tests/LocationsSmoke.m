@@ -101,6 +101,19 @@ MenuAtPoint (NSOutlineView *outline, NSPoint point)
   return [outline menuForEvent:event];
 }
 
+static void
+WaitForLaunch (FVWindow *window, NSString *marker)
+{
+  NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:8];
+  while (([[window valueForKey:@"pendingLaunches"] unsignedIntegerValue] != 0
+          || ![[NSFileManager defaultManager] fileExistsAtPath:marker]
+          || ![[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Idle"])
+         && [deadline timeIntervalSinceNow] > 0)
+    Tick (.02);
+  CHECK ([[window valueForKey:@"pendingLaunches"] unsignedIntegerValue] == 0);
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Idle"]);
+}
+
 static NSMenu *
 MenuForItem (NSOutlineView *outline, id item)
 {
@@ -145,16 +158,36 @@ main (void)
       && [[[[[outline tableColumns] objectAtIndex:0] headerCell] stringValue] isEqual:@"Locations"]);
   CHECK ([outline gridStyleMask] == NSTableViewGridNone);
   id source = [outline dataSource];
-  CHECK ([source outlineView:outline numberOfChildrenOfItem:nil] == 2);
+  CHECK ([source outlineView:outline numberOfChildrenOfItem:nil] == 3);
   id common = [source outlineView:outline child:0 ofItem:nil];
   id favorites = [source outlineView:outline child:1 ofItem:nil];
+  id mounted = [source outlineView:outline child:2 ofItem:nil];
+  CHECK ([[mounted objectForKey:@"title"] isEqual:@"Mounted"]);
+  CHECK ([source outlineView:outline isItemExpandable:mounted]);
+  CHECK ([outline isItemExpanded:mounted]);
+  NSArray *mountedItems = [mounted objectForKey:@"children"];
+  NSMutableSet *volumePaths = [NSMutableSet set];
+  NSUInteger volumeIndex;
+  for (volumeIndex = 0; volumeIndex < [mountedItems count]; volumeIndex++)
+    {
+      id item = [mountedItems objectAtIndex:volumeIndex];
+      CHECK ([[item objectForKey:@"group"] isEqual:@"mounted"]);
+      CHECK (MenuForItem (outline, item) == nil);
+      [volumePaths addObject:[item objectForKey:@"path"]];
+    }
+  CHECK ([volumePaths count] == [mountedItems count]);
+  CHECK ([volumePaths containsObject:@"/"]);
+  NSArray *commonItems = [common objectForKey:@"children"];
+  for (volumeIndex = 0; volumeIndex < [commonItems count]; volumeIndex++)
+    CHECK (![volumePaths containsObject:[[commonItems objectAtIndex:volumeIndex] objectForKey:@"path"]]);
   CHECK ([source outlineView:outline isItemExpandable:common]);
   CHECK ([source outlineView:outline isItemExpandable:favorites]);
   CHECK ([source outlineView:outline numberOfChildrenOfItem:favorites] == 0);
   [outline collapseItem:common];
-  CHECK ([outline numberOfRows] == 2);
+  [outline collapseItem:mounted];
+  CHECK ([outline numberOfRows] == 3);
   [outline expandItem:common];
-  CHECK ([outline numberOfRows] > 2);
+  CHECK ([outline numberOfRows] > 3);
   FVTestDrag *drag = [FVTestDrag new];
   [[drag draggingPasteboard] declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
   [[drag draggingPasteboard] setPropertyList:[NSArray arrayWithObjects:root, app, document, nil]
@@ -166,6 +199,9 @@ main (void)
                       forName:NSArgumentDomain];
   [defaults setObject:[NSArray array] forKey:@"Favorites"];
   CHECK ([source outlineView:outline acceptDrop:(id)drag item:favorites childIndex:-1]);
+  mounted = [source outlineView:outline child:2 ofItem:nil];
+  CHECK (![outline isItemExpanded:mounted]);
+  [outline expandItem:mounted];
   favorites = [source outlineView:outline child:1 ofItem:nil];
   CHECK ([source outlineView:outline numberOfChildrenOfItem:favorites] == 3);
   CHECK ([fm fileExistsAtPath:document]);
@@ -176,7 +212,9 @@ main (void)
   [outline selectRowIndexes:[NSIndexSet indexSetWithIndex:[outline rowForItem:appFavorite]]
        byExtendingSelection:NO];
   [window sidebarClicked:outline];
-  Tick (.3);
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue]
+      isEqual:@"Launching application…"]);
+  WaitForLaunch (window, marker);
   CHECK ([fm fileExistsAtPath:marker]);
   CHECK ([fm removeItemAtPath:marker error:NULL]);
   /* Exercise the same action used by file-list double-click. */
@@ -189,7 +227,7 @@ main (void)
   CHECK (row < [[window items] count]);
   [table selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO];
   [window open:table];
-  Tick (.3);
+  WaitForLaunch (window, marker);
   CHECK ([fm fileExistsAtPath:marker]);
   CHECK ([FVLauncher launchApplication:app file:document]);
   Tick (.3);

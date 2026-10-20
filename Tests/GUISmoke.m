@@ -3,6 +3,7 @@
 #import "FVIconView.h"
 #include <unistd.h>
 static unsigned checks = 0;
+static FVWindow *dialogOwner;
 #define CHECK(x)                                                                                   \
   do                                                                                               \
     {                                                                                              \
@@ -49,6 +50,11 @@ CheckLayout (FVWindow *controller)
   for (i = 0; i < [views count]; i++)
     CHECK (NSContainsRect ([bar bounds], [[views objectAtIndex:i] frame]));
   CHECK (NSMaxY ([[controller valueForKey:@"breadcrumbs"] frame]) <= NSMinY ([bar frame]));
+  NSTextField *activity = [controller valueForKey:@"activityStatus"];
+  CHECK (![activity isBordered]);
+  CHECK ([activity alignment] == NSRightTextAlignment);
+  CHECK (NSMaxX ([[controller valueForKey:@"status"] frame]) < NSMinX ([activity frame]));
+  CHECK (fabs (NSMaxX ([activity frame]) - (NSWidth ([content bounds]) - 10)) < 1);
 }
 
 @interface FVDialogAnswer : NSObject
@@ -57,6 +63,9 @@ CheckLayout (FVWindow *controller)
 @implementation FVDialogAnswer
 - (void)answer:(NSTimer *)timer
 {
+  if (dialogOwner)
+    CHECK ([[[dialogOwner valueForKey:@"activityStatus"] stringValue]
+        isEqual:@"Waiting for input…"]);
   NSArray *views = [[[NSApp modalWindow] contentView] subviews];
 
   NSUInteger i;
@@ -260,8 +269,10 @@ main (void)
   [savedWindow saveFrameUsingName:@"FileViewer"];
   [savedWindow release];
   FVWindow *window = [[FVWindow alloc] initWithPath:root];
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Loading…"]);
   [window showWindow:nil];
   Loaded (window);
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Idle"]);
   CheckLayout (window);
   [[window window] setContentSize:NSMakeSize (980, 640)];
   CheckLayout (window);
@@ -378,12 +389,16 @@ main (void)
   Loaded (other);
   CHECK ([[other items] count] == 1);
   CHECK ([[window items] count] == 5);
+  dialogOwner = window;
   AnswerNextDialog (@"Created through dialog");
   Action (window, @"newFolder:");
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Creating folder…"]);
   OperationDone (window);
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Idle"]);
   NSString *created = [root stringByAppendingPathComponent:@"Created through dialog"];
   CHECK ([fm fileExistsAtPath:created]);
   Action (window, @"undo:");
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Undoing…"]);
   OperationDone (window);
   CHECK (![fm fileExistsAtPath:created]);
   NSUInteger row;
@@ -402,6 +417,9 @@ main (void)
   CHECK ([fm fileExistsAtPath:[root stringByAppendingPathComponent:@"one.txt"]]);
   /* Cancel and close during work; worker results must not access dead AppKit views. */
   [window refresh:nil];
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Loading…"]);
+  Action (window, @"cancel:");
+  CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Idle"]);
   [[window window] close];
   [other refresh:nil];
   [[other window] close];
