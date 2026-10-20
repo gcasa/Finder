@@ -1,5 +1,6 @@
 #import "FVApplication.h"
 #import "FVWindow.h"
+#import "FVThumbnails.h"
 static void
 FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArray *keys)
 {
@@ -25,6 +26,9 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   [menu addItemWithTitle:@"About FileViewer"
                   action:@selector (orderFrontStandardAboutPanel:)
            keyEquivalent:@""];
+  id<NSMenuItem> preferences = [menu addItemWithTitle:@"Preferences…"
+      action:@selector (preferences:) keyEquivalent:@","];
+  [preferences setTarget:self];
   FVMenu (menu, @"File",
           [NSArray arrayWithObjects:@"New Window", @"Open", @"Open With…", @"Reset Open With Association",
                                     @"Open Folder in New Window", @"Show Package Contents",
@@ -120,8 +124,49 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
       @"OK", nil, nil);
 }
 
+- (void)preferences:(id)sender
+{
+  if (!preferencesPanel)
+    {
+      preferencesPanel = [[NSPanel alloc]
+          initWithContentRect:NSMakeRect (0, 0, 430, 130)
+                    styleMask:NSTitledWindowMask | NSClosableWindowMask
+                      backing:NSBackingStoreBuffered defer:NO];
+      [preferencesPanel setTitle:@"Preferences"];
+      [preferencesPanel setReleasedWhenClosed:NO];
+      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      [thumbnailCheckbox setButtonType:NSSwitchButton];
+      [thumbnailCheckbox setTitle:@"Show thumbnails"];
+      [thumbnailCheckbox setTarget:self];
+      [thumbnailCheckbox setAction:@selector (toggleThumbnails:)];
+      [[preferencesPanel contentView] addSubview:thumbnailCheckbox];
+      NSTextField *label = [[[NSTextField alloc]
+          initWithFrame:NSMakeRect (24, 20, 380, 45)] autorelease];
+      [label setStringValue:@"Preview images and movies in file views.\nChanges apply to all open windows."];
+      [label setEditable:NO];
+      [label setSelectable:NO];
+      [label setBordered:NO];
+      [label setBezeled:NO];
+      [label setDrawsBackground:NO];
+      [[preferencesPanel contentView] addSubview:label];
+      [preferencesPanel center];
+    }
+  [thumbnailCheckbox setState:[FVThumbnailOperation enabled] ? NSOnState : NSOffState];
+  [preferencesPanel makeKeyAndOrderFront:self];
+}
+
+- (void)toggleThumbnails:(id)sender
+{
+  [[NSUserDefaults standardUserDefaults] setBool:[sender state] == NSOnState
+                                         forKey:@"ShowThumbnails"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVThumbnailPreferencesChanged"
+                                                    object:self];
+}
+
 - (void)dealloc
 {
+  [thumbnailCheckbox release];
+  [preferencesPanel release];
   [windows release];
   [pendingPaths release];
   [super dealloc];

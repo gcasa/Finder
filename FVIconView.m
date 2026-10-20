@@ -97,8 +97,12 @@
       FVItem *item = [items objectAtIndex:i];
       CGFloat size = tileSize * .48;
       NSImage *image = [owner iconForPath:[item path]];
-      [image drawInRect:NSMakeRect (tile.origin.x + (tileSize - size) / 2, tile.origin.y + 9, size,
-                                    size)
+      NSSize imageSize = [image size];
+      CGFloat scale = imageSize.width > 0 && imageSize.height > 0
+                          ? MIN (size / imageSize.width, size / imageSize.height) : 1;
+      [image drawInRect:NSMakeRect (tile.origin.x + (tileSize - imageSize.width * scale) / 2,
+                                    tile.origin.y + 9 + (size - imageSize.height * scale) / 2,
+                                    imageSize.width * scale, imageSize.height * scale)
                 fromRect:NSZeroRect
                operation:NSCompositeSourceOver
                 fraction:1.0

@@ -23,6 +23,10 @@
   FVIconView *icons;
   NSMutableDictionary *browserRows;
   NSMutableDictionary *iconCache;
+  NSCache *thumbnailCache;
+  NSMutableSet *thumbnailRequests;
+  NSOperationQueue *thumbnailQueue;
+  NSUInteger thumbnailGeneration;
   NSMutableArray *errors;
   NSArray *savedSelection;
   NSDictionary *savedBrowserSelection;

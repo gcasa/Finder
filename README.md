@@ -12,6 +12,9 @@ filesystem adapter targets Linux (`renameat2`, `O_NOFOLLOW`, `/proc/self/fd`, an
 POSIX stat timestamps). Other Unix systems need an equivalent platform adapter;
 unsupported atomic rename fails rather than falling back to overwriting rename.
 
+Thumbnails use optional FFmpeg (`/usr/bin/ffmpeg` or `/usr/local/bin/ffmpeg`).
+Without it, files retain their normal icons.
+
 From this directory:
 
 ```sh
@@ -57,6 +60,12 @@ Inspected development environment:
 - List view has name/icons, byte size, kind, modification time, permissions and
   full path. Click headers to sort or reverse sorting. Folders First is optional.
   Arrow keys navigate, typing selects by prefix, Return/double-click opens.
+- Image and movie thumbnails are enabled by default in icon, list and column
+  views. Audio files with embedded artwork can also show a preview. Preferences
+  → Show thumbnails applies immediately to all open windows and remembers your
+  choice. Previews are generated in the background, preserve their proportions,
+  and refresh when files change. Unsupported formats, unavailable codecs and
+  damaged media keep their ordinary icons.
 - Application bundles launch directly. Files use GNUstep's registered type
   associations; when several applications match, a chooser lists the preferred
   application first. With no association, choose an application manually.
@@ -188,6 +197,7 @@ GNUstep implementation; native matrix selection remains in use for clicks.
 ./Tests/gui.sh
 sh Tests/locations.sh
 sh Tests/launch.sh
+sh Tests/thumbnails.sh
 ```
 
 `Tests/run.sh` builds Foundation-only tests and creates all destructive fixtures
@@ -198,7 +208,7 @@ separate commands if the wrapper cannot connect to its X server:
 
 ```sh
 clang $(gnustep-config --objc-flags) -Wall -Wextra -Wno-unused-parameter -I. \
-  Tests/GUISmoke.m FVWindow.m FVApplication.m FVModel.m FVOperations.m FVIconView.m FVLauncher.m \
+  Tests/GUISmoke.m FVWindow.m FVApplication.m FVModel.m FVOperations.m FVIconView.m FVLauncher.m FVThumbnails.m \
   -o obj/tests/gui $(gnustep-config --gui-libs)
 xvfb-run -a ./obj/tests/gui
 ```
@@ -208,6 +218,8 @@ observed results and unverified areas. Source builds without application warning
 Xvfb without a window manager emits harmless `_NET_WORKAREA` diagnostics. The
 managed development sandbox may also report that the real user's Defaults lock
 directory is not writable; normal desktop execution can persist preferences.
+The thumbnail tests additionally require FFmpeg and exercise image/movie
+decoding, damaged-media fallback, live invalidation, and the Preferences checkbox.
 
 ## Remaining limitations
 

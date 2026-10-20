@@ -3,6 +3,7 @@
 #import "FVOperations.h"
 #import "FVIconView.h"
 #import "FVLauncher.h"
+#import "FVThumbnails.h"
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 
@@ -582,6 +583,35 @@ FVPrompt (NSString *title, NSString *value)
 
 @end
 
+@interface FVMediaBrowserCell : NSBrowserCell
+{
+  FVWindow *owner;
+}
+
+- (void)setOwner:(FVWindow *)controller;
+@end
+
+@implementation FVMediaBrowserCell
+- (void)setOwner:(FVWindow *)controller
+{
+  owner = controller;
+}
+
+- (void)drawInteriorWithFrame:(NSRect)frame inView:(NSView *)view
+{
+  NSImage *image = [[[owner iconForPath:[self representedObject]] copy] autorelease];
+  NSSize size = [image size];
+  if (size.width > 0 && size.height > 0)
+    {
+      CGFloat scale = MIN (18 / size.width, 18 / size.height);
+      [image setSize:NSMakeSize (size.width * scale, size.height * scale)];
+    }
+  [self setImage:image];
+  [super drawInteriorWithFrame:frame inView:view];
+}
+
+@end
+
 @interface FVNameCell : NSTextFieldCell
 @end
 
@@ -596,7 +626,12 @@ FVPrompt (NSString *title, NSString *value)
       text.size.width -= 23;
     }
   [super drawWithFrame:text inView:view];
-  [image drawInRect:NSMakeRect (frame.origin.x + 2, frame.origin.y + 1, 18, 18)
+  NSSize size = [image size];
+  CGFloat scale = size.width > 0 && size.height > 0
+                      ? MIN (18 / size.width, 18 / size.height) : 1;
+  [image drawInRect:NSMakeRect (frame.origin.x + 2 + (18 - size.width * scale) / 2,
+                               frame.origin.y + 1 + (18 - size.height * scale) / 2,
+                               size.width * scale, size.height * scale)
             fromRect:NSZeroRect
            operation:NSCompositeSourceOver
             fraction:1
@@ -632,6 +667,14 @@ FVPrompt (NSString *title, NSString *value)
       sortKey = [@"name" copy];
       errors = [NSMutableArray new];
       iconCache = [NSMutableDictionary new];
+      thumbnailCache = [NSCache new];
+      [thumbnailCache setCountLimit:256];
+      thumbnailRequests = [NSMutableSet new];
+      thumbnailQueue = [NSOperationQueue new];
+      [thumbnailQueue setMaxConcurrentOperationCount:2];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (thumbnailPreferencesChanged:)
+              name:@"FVThumbnailPreferencesChanged" object:nil];
       browserRows = [NSMutableDictionary new];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
       NSView *content = [window contentView];
@@ -879,6 +922,7 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)refresh:(id)sender
 {
+  [self invalidateThumbnails];
   NSMutableDictionary *columns = [NSMutableDictionary dictionary];
   NSInteger column;
   for (column = 0; mode == 1 && column <= [browser lastColumn]; column++)
@@ -1250,6 +1294,8 @@ FVPrompt (NSString *title, NSString *value)
 - (void)windowWillClose:(NSNotification *)note
 {
   closed = YES;
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [self invalidateThumbnails];
   NSUInteger panelIndex;
   for (panelIndex = 0; panelIndex < [infoPanels count]; panelIndex++)
     [[infoPanels objectAtIndex:panelIndex] close];
@@ -1326,6 +1372,22 @@ FVPrompt (NSString *title, NSString *value)
 
 - (NSImage *)iconForPath:(NSString *)value
 {
+  if (!value)
+    return nil;
+  if ([FVThumbnailOperation enabled] && [FVThumbnailOperation supportsPath:value])
+    {
+      NSImage *preview = [thumbnailCache objectForKey:value];
+      if (preview)
+        return preview;
+      if (!closed && ![thumbnailRequests containsObject:value])
+        {
+          [thumbnailRequests addObject:value];
+          FVThumbnailOperation *job = [[FVThumbnailOperation alloc]
+              initWithPath:value generation:thumbnailGeneration target:self];
+          [thumbnailQueue addOperation:job];
+          [job release];
+        }
+    }
   NSImage *image = [iconCache objectForKey:value];
   if (!image)
     {
@@ -1336,6 +1398,45 @@ FVPrompt (NSString *title, NSString *value)
         [iconCache setObject:image forKey:value];
     }
   return image;
+}
+
+- (void)invalidateThumbnails
+{
+  thumbnailGeneration++;
+  [thumbnailQueue cancelAllOperations];
+  [thumbnailCache removeAllObjects];
+  [thumbnailRequests removeAllObjects];
+}
+
+- (void)thumbnailPreferencesChanged:(NSNotification *)notification
+{
+  [self invalidateThumbnails];
+  [self redrawThumbnails];
+}
+
+- (void)redrawThumbnails
+{
+  [table setNeedsDisplay:YES];
+  [icons setNeedsDisplay:YES];
+  NSInteger column;
+  for (column = 0; browser && column <= [browser lastColumn]; column++)
+    [[browser matrixInColumn:column] setNeedsDisplay:YES];
+}
+
+- (void)thumbnailLoaded:(NSDictionary *)result
+{
+  if (closed || ![FVThumbnailOperation enabled]
+      || [[result objectForKey:@"generation"] unsignedIntegerValue] != thumbnailGeneration)
+    return;
+  NSData *data = [result objectForKey:@"data"];
+  NSImage *preview = data ? [[[NSImage alloc] initWithData:data] autorelease] : nil;
+  if (preview && [preview isValid])
+    {
+      NSString *file = [result objectForKey:@"path"];
+      [thumbnailCache setObject:preview forKey:file];
+      [thumbnailRequests removeObject:file];
+      [self redrawThumbnails];
+    }
 }
 
 - (void)tableView:(NSTableView *)sender
@@ -1795,6 +1896,7 @@ FVPrompt (NSString *title, NSString *value)
   if (!browser)
     {
       browser = [[NSBrowser alloc] initWithFrame:[host bounds]];
+      [browser setCellClass:[FVMediaBrowserCell class]];
       [browser setMatrixClass:[FVBrowserMatrix class]];
       [browser setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
       [browser setDelegate:self];
@@ -1847,6 +1949,7 @@ FVPrompt (NSString *title, NSString *value)
     {
       FVItem *item = [rows objectAtIndex:i];
       NSBrowserCell *cell = [matrix cellAtRow:i column:0];
+      [(FVMediaBrowserCell *)cell setOwner:self];
       [cell setStringValue:[item name]];
       [cell setRepresentedObject:[item path]];
       [cell setLeaf:![item directory] ||
@@ -2126,6 +2229,11 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)dealloc
 {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [thumbnailQueue cancelAllOperations];
+  [thumbnailQueue release];
+  [thumbnailCache release];
+  [thumbnailRequests release];
   [monitor invalidate];
   [monitor release];
   [listing cancel];

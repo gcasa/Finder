@@ -4,8 +4,11 @@
   NSMutableArray *windows;
   NSMutableArray *pendingPaths;
   BOOL launched;
+  NSPanel *preferencesPanel;
+  NSButton *thumbnailCheckbox;
 }
 
 - (void)newWindow:(id)sender;
 - (void)openPath:(NSString *)path;
+- (void)preferences:(id)sender;
 @end
