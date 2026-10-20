@@ -25,6 +25,7 @@
   NSMutableDictionary *iconCache;
   NSMutableArray *errors;
   NSArray *savedSelection;
+  NSDictionary *savedBrowserSelection;
   NSPoint savedScroll;
   NSTimer *monitor;
   NSDictionary *lastStamp;

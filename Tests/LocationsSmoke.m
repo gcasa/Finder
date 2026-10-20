@@ -90,6 +90,24 @@ Tick (double seconds)
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];
 }
 
+static NSMenu *
+MenuAtPoint (NSOutlineView *outline, NSPoint point)
+{
+  NSEvent *event = [NSEvent mouseEventWithType:NSRightMouseDown
+      location:[outline convertPoint:point toView:nil] modifierFlags:0
+      timestamp:[NSDate timeIntervalSinceReferenceDate]
+      windowNumber:[[outline window] windowNumber] context:nil
+      eventNumber:0 clickCount:1 pressure:1];
+  return [outline menuForEvent:event];
+}
+
+static NSMenu *
+MenuForItem (NSOutlineView *outline, id item)
+{
+  NSRect rect = [outline rectOfRow:[outline rowForItem:item]];
+  return MenuAtPoint (outline, NSMakePoint (NSMidX (rect), NSMidY (rect)));
+}
+
 int
 main (void)
 {
@@ -255,6 +273,27 @@ main (void)
   id favoriteHome = [source outlineView:outline child:2 ofItem:favorites];
   CHECK ([outline rowForItem:commonHome] >= 0);
   CHECK ([outline rowForItem:favoriteHome] > [outline rowForItem:commonHome]);
+  CHECK (MenuForItem (outline, commonHome) == nil);
+  CHECK (MenuForItem (outline, favorites) == nil);
+  CHECK (MenuAtPoint (outline, NSMakePoint (10, -10)) == nil);
+  [outline selectRowIndexes:[NSIndexSet indexSetWithIndex:[outline rowForItem:commonHome]]
+       byExtendingSelection:NO];
+  NSInteger selectedRow = [outline selectedRow];
+  NSString *originalPath = [[window valueForKey:@"path"] copy];
+  NSMenu *menu = MenuForItem (outline, favoriteHome);
+  CHECK ([menu numberOfItems] == 1);
+  NSMenuItem *remove = [menu itemAtIndex:0];
+  CHECK ([[remove title] isEqual:@"Remove from Favorites"]);
+  CHECK ([[remove representedObject] isEqual:NSHomeDirectory ()]);
+  CHECK ([outline selectedRow] == selectedRow);
+  CHECK ([[window valueForKey:@"path"] isEqual:originalPath]);
+  CHECK ([NSApp sendAction:[remove action] to:[remove target] from:remove]);
+  CHECK (![[defaults arrayForKey:@"Favorites"] containsObject:NSHomeDirectory ()]);
+  CHECK ([[defaults arrayForKey:@"Favorites"] count] == 2);
+  CHECK ([[window valueForKey:@"path"] isEqual:originalPath]);
+  CHECK ([fm fileExistsAtPath:root]);
+  CHECK ([fm fileExistsAtPath:document]);
+  [originalPath release];
   [[drag draggingPasteboard] setPropertyList:[NSArray arrayWithObject:@"/nonexistent-fixture"]
                                    forType:NSFilenamesPboardType];
   CHECK ([source outlineView:outline validateDrop:(id)drag proposedItem:nil proposedChildIndex:-1]

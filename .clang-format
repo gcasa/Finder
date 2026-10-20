@@ -1,0 +1,7 @@
+BasedOnStyle: GNU
+ColumnLimit: 100
+IndentWidth: 2
+ObjCBlockIndentWidth: 2
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+SortIncludes: Never

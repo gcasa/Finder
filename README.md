@@ -50,7 +50,8 @@ Inspected development environment:
   Desktop/Documents/Downloads/Pictures/Music/Videos, root, discoverable data
   volumes, and the home Trash when it exists. Drag files, folders, or applications
   into the outline to save favorites without copying them. Click a favorite to
-  open it; Go → Remove Favorite removes the selected favorite. XDG
+  open it; right-click a favorite and choose Remove from Favorites to remove
+  that shortcut. Go → Remove Favorite removes the selected favorite. XDG
   `user-dirs.dirs` values using `$HOME` or absolute paths are recognized without
   executing that file. Missing personal directories are never created.
 - List view has name/icons, byte size, kind, modification time, permissions and
@@ -81,9 +82,10 @@ Inspected development environment:
   Search is separate, shows its root in the path control, puts result paths next
   to names, reports permission failures, and delivers incremental batches. It
   never searches contents and never recurses through symbolic links.
-- Refresh is authoritative. A three-second background polling adapter detects
-  directory entry changes. It preserves list/icon selection and scroll position
-  where possible. Metadata-only changes inside a file can require Refresh.
+- Open folders update automatically through one-second background polling,
+  including expanded browser columns. Added, removed, renamed and modified files
+  refresh the view, preserving selection and list/icon scroll position where
+  possible. Recursive search results require Refresh.
 - Favorites, hidden-file preference, folders-first preference, last directory,
   view mode and window frame use application-local NSUserDefaults. Key equivalents
   use GNUstep's native modifier mapping (often Alt on Unix), not a hard-coded
@@ -211,8 +213,8 @@ directory is not writable; normal desktop execution can persist preferences.
 
 - Linux-specific filesystem adapter; other Unix systems are not tested.
 - No content search, live preview pane, directory merging or per-volume Trash.
-- Polling instead of inotify; expanded browser columns reset on refresh, and
-  selection of descendants is not translated into a different view's root list.
+- Polling instead of inotify; large or remote directories can take longer to
+  update. Selection of descendants is not translated into a different view's root list.
 - Open With chooses a bundle rather than presenting a ranked association list.
 - Long-running OS calls cannot always be interrupted immediately. Final sorting
   is on the UI thread; enormous directories/search result sets can still pause

@@ -5,6 +5,21 @@
 #import "FVLauncher.h"
 #include <sys/statvfs.h>
 #include <sys/stat.h>
+
+static NSString *
+FVFileStamp (NSString *file, BOOL follow)
+{
+  struct stat st;
+  if ((follow ? stat ([file fileSystemRepresentation], &st)
+              : lstat ([file fileSystemRepresentation], &st)) != 0)
+    return @"unavailable";
+  return [NSString stringWithFormat:@"%llu:%llu:%llu:%u:%u:%u:%lld:%ld:%lld:%ld",
+      (unsigned long long)st.st_dev, (unsigned long long)st.st_ino,
+      (unsigned long long)st.st_size, (unsigned)st.st_mode, (unsigned)st.st_uid,
+      (unsigned)st.st_gid, (long long)st.st_mtim.tv_sec, st.st_mtim.tv_nsec,
+      (long long)st.st_ctim.tv_sec, st.st_ctim.tv_nsec];
+}
+
 static NSTextField *
 FVLabel (NSRect frame, NSString *text)
 {
@@ -411,6 +426,30 @@ FVPrompt (NSString *title, NSString *value)
   return [dialog run] == 0 ? [dialog value] : nil;
 }
 
+@interface FVSidebarView : NSOutlineView
+@end
+
+@implementation FVSidebarView
+- (NSMenu *)menuForEvent:(NSEvent *)event
+{
+  NSInteger row = [self rowAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
+  if (row < 0)
+    return nil;
+  NSDictionary *item = [self itemAtRow:row];
+  if (![[item objectForKey:@"group"] isEqual:@"favorite"])
+    return nil;
+  NSMenu *menu = [[[NSMenu alloc] initWithTitle:@"Favorites"] autorelease];
+  NSMenuItem *remove = [[[NSMenuItem alloc] initWithTitle:@"Remove from Favorites"
+                                                action:@selector (removeFavorite:)
+                                         keyEquivalent:@""] autorelease];
+  [remove setTarget:[self target]];
+  [remove setRepresentedObject:[item objectForKey:@"path"]];
+  [menu addItem:remove];
+  return menu;
+}
+
+@end
+
 @interface FVTableView : NSTableView
 {
   NSMutableString *typed;
@@ -673,7 +712,7 @@ FVPrompt (NSString *title, NSString *value)
               initWithFrame:NSMakeRect (8, 34, 164, contentSize.height - 82)] autorelease];
       [sideScroll setAutoresizingMask:NSViewHeightSizable];
       [sideScroll setHasVerticalScroller:YES];
-      sidebar = [[NSOutlineView alloc] initWithFrame:[sideScroll bounds]];
+      sidebar = [[FVSidebarView alloc] initWithFrame:[sideScroll bounds]];
       [sidebar setGridStyleMask:NSTableViewGridNone];
       [sidebar setRowHeight:MAX (22, [NSFont systemFontSize] + 7)];
       NSTableColumn *sideColumn = [[[NSTableColumn alloc] initWithIdentifier:@"place"] autorelease];
@@ -703,7 +742,7 @@ FVPrompt (NSString *title, NSString *value)
         [self columnMode:nil];
       else if (savedMode == 2)
         [self iconMode:nil];
-      monitor = [[NSTimer scheduledTimerWithTimeInterval:3
+      monitor = [[NSTimer scheduledTimerWithTimeInterval:1
                                                   target:self
                                                 selector:@selector (checkDirectory:)
                                                 userInfo:nil
@@ -840,6 +879,26 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)refresh:(id)sender
 {
+  NSMutableDictionary *columns = [NSMutableDictionary dictionary];
+  NSInteger column;
+  for (column = 0; mode == 1 && column <= [browser lastColumn]; column++)
+    {
+      NSString *folder = [self browserFolder:column];
+      if (!folder)
+        continue;
+      NSMutableArray *selected = [NSMutableArray array];
+      NSArray *cells = [[browser matrixInColumn:column] selectedCells];
+      NSUInteger i;
+      for (i = 0; i < [cells count]; i++)
+        {
+          id value = [[cells objectAtIndex:i] representedObject];
+          if (value)
+            [selected addObject:value];
+        }
+      [columns setObject:selected forKey:folder];
+    }
+  [savedBrowserSelection release];
+  savedBrowserSelection = [columns copy];
   [savedSelection release];
   savedSelection = [[self selectedPaths] copy];
   savedScroll = [[scroll contentView] bounds].origin;
@@ -891,6 +950,8 @@ FVPrompt (NSString *title, NSString *value)
       [[scroll contentView] scrollToPoint:savedScroll];
       [scroll reflectScrolledClipView:[scroll contentView]];
       [browser loadColumnZero];
+      [self restoreBrowserColumn:0];
+      [self checkDirectory:nil];
     }
   [status
       setStringValue:[NSString
@@ -1441,7 +1502,11 @@ FVPrompt (NSString *title, NSString *value)
                          : [NSArray array]];
   NSString *selected = [sidebar selectedRow] >= 0
                            ? [[sidebar itemAtRow:[sidebar selectedRow]] objectForKey:@"path"] : nil;
-  [favorites removeObject:selected && [favorites containsObject:selected] ? selected : path];
+  if ([sender isKindOfClass:[NSMenuItem class]]
+      && [[sender representedObject] isKindOfClass:[NSString class]])
+    [favorites removeObject:[sender representedObject]];
+  else
+    [favorites removeObject:selected && [favorites containsObject:selected] ? selected : path];
   [[NSUserDefaults standardUserDefaults] setObject:favorites forKey:@"Favorites"];
   [self rebuildPlaces];
 }
@@ -1825,9 +1890,34 @@ FVPrompt (NSString *title, NSString *value)
   [browserRows setObject:rows forKey:folder];
   NSInteger column = [[result objectForKey:@"column"] integerValue];
   if ([[self browserFolder:column] isEqual:folder])
-    [browser reloadColumn:column];
+    {
+      [browser reloadColumn:column];
+      [self restoreBrowserColumn:column];
+      [self checkDirectory:nil];
+    }
   if ([result objectForKey:@"error"])
     [status setStringValue:[result objectForKey:@"error"]];
+}
+
+- (void)restoreBrowserColumn:(NSInteger)column
+{
+  NSString *folder = [self browserFolder:column];
+  NSArray *selected = folder ? [savedBrowserSelection objectForKey:folder] : nil;
+  if (!selected)
+    return;
+  NSMatrix *matrix = [browser matrixInColumn:column];
+  [matrix deselectAllCells];
+  NSInteger row;
+  for (row = 0; row < [matrix numberOfRows]; row++)
+    if ([selected containsObject:[[matrix cellAtRow:row column:0] representedObject]])
+      [matrix setSelectionFrom:row to:row anchor:row highlight:YES];
+  NSArray *cells = [matrix selectedCells];
+  if ([cells count] == 1)
+    {
+      NSBrowserCell *cell = [cells objectAtIndex:0];
+      if (![cell isLeaf] && [savedBrowserSelection objectForKey:[cell representedObject]])
+        [browser addColumn];
+    }
 }
 
 - (NSString *)browser:(NSBrowser *)sender titleOfColumn:(NSInteger)column
@@ -1883,6 +1973,8 @@ FVPrompt (NSString *title, NSString *value)
 
 - (void)browserSelected:(id)sender
 {
+  [savedBrowserSelection release];
+  savedBrowserSelection = nil;
   [self selectionChanged];
 }
 
@@ -1900,16 +1992,23 @@ FVPrompt (NSString *title, NSString *value)
     }
 }
 
-/* Portable polling adapter: directory timestamps detect entry changes. Manual
-   refresh is authoritative for content-only metadata changes and remote mounts. */
+/* Scan metadata off the UI thread, including every expanded browser folder. */
 - (void)checkDirectory:(NSTimer *)timer
 {
   if (closed || loading || operation || searching || monitorBusy)
     return;
   monitorBusy = YES;
+  NSMutableArray *folders = [NSMutableArray arrayWithObject:path];
+  NSInteger column;
+  for (column = 1; mode == 1 && column <= [browser lastColumn]; column++)
+    {
+      NSString *folder = [self browserFolder:column];
+      if (folder && ![folders containsObject:folder])
+        [folders addObject:folder];
+    }
   NSDictionary *request = [NSDictionary
       dictionaryWithObjectsAndKeys:path, @"path", [NSNumber numberWithUnsignedInteger:generation],
-                                   @"generation", nil];
+                                   @"generation", folders, @"folders", nil];
   [NSThread detachNewThreadSelector:@selector (readDirectoryStamp:)
                            toTarget:self
                          withObject:request];
@@ -1919,17 +2018,29 @@ FVPrompt (NSString *title, NSString *value)
 {
   NSAutoreleasePool *pool = [NSAutoreleasePool new];
   NSMutableDictionary *stamp = [NSMutableDictionary dictionaryWithDictionary:request];
+  NSArray *folders = [request objectForKey:@"folders"];
+  NSMutableDictionary *snapshots = [NSMutableDictionary dictionary];
+  NSUInteger i;
+  for (i = 0; i < [folders count]; i++)
+    {
+      NSString *folder = [folders objectAtIndex:i];
+      NSMutableDictionary *entries = [NSMutableDictionary dictionary];
+      [entries setObject:FVFileStamp (folder, YES) forKey:@""];
+      NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:folder error:NULL];
+      NSUInteger j;
+      for (j = 0; j < [names count]; j++)
+        {
+          NSString *name = [names objectAtIndex:j];
+          NSString *file = [folder stringByAppendingPathComponent:name];
+          [entries setObject:[NSArray arrayWithObjects:FVFileStamp (file, NO),
+                                                       FVFileStamp (file, YES), nil]
+                      forKey:name];
+        }
+      [snapshots setObject:entries forKey:folder];
+    }
+  [stamp setObject:snapshots forKey:@"snapshots"];
   NSString *folder = [request objectForKey:@"path"];
-  struct stat st;
   struct statvfs space;
-  if (!stat ([folder fileSystemRepresentation], &st))
-    [stamp
-        setObject:[NSString stringWithFormat:@"%llu:%llu:%lld:%ld", (unsigned long long)st.st_dev,
-                                             (unsigned long long)st.st_ino,
-                                             (long long)st.st_mtim.tv_sec, st.st_mtim.tv_nsec]
-           forKey:@"identity"];
-  else
-    [stamp setObject:@"unavailable" forKey:@"identity"];
   if (!statvfs ([folder fileSystemRepresentation], &space))
     [stamp
         setObject:[NSString stringWithFormat:@" • %.1f GiB available",
@@ -1944,9 +2055,18 @@ FVPrompt (NSString *title, NSString *value)
   monitorBusy = NO;
   if (closed || [[stamp objectForKey:@"generation"] unsignedIntegerValue] != generation)
     return;
-  BOOL changed =
-      [[lastStamp objectForKey:@"path"] isEqual:path]
-      && ![[stamp objectForKey:@"identity"] isEqual:[lastStamp objectForKey:@"identity"]];
+  if (loading || operation || searching)
+    return;
+  NSDictionary *previous = [[lastStamp objectForKey:@"path"] isEqual:path]
+                               ? [lastStamp objectForKey:@"snapshots"] : nil;
+  NSDictionary *snapshots = [stamp objectForKey:@"snapshots"];
+  BOOL changed = NO;
+  NSEnumerator *enumerator = [snapshots keyEnumerator];
+  NSString *folder;
+  while ((folder = [enumerator nextObject]))
+    if ([previous objectForKey:folder]
+        && ![[previous objectForKey:folder] isEqual:[snapshots objectForKey:folder]])
+      changed = YES;
   [lastStamp release];
   lastStamp = [stamp copy];
   [spaceDescription release];
@@ -2030,6 +2150,7 @@ FVPrompt (NSString *title, NSString *value)
   [placeIcons release];
   [errors release];
   [savedSelection release];
+  [savedBrowserSelection release];
   [lastStamp release];
   [spaceDescription release];
   [sortKey release];

@@ -189,6 +189,39 @@ CheckClickJitter (FVWindow *controller)
   [window release];
 }
 
+static FVItem *
+WaitForItem (FVWindow *controller, NSString *file, BOOL present, NSUInteger size)
+{
+  NSDate *limit = [NSDate dateWithTimeIntervalSinceNow:6];
+  do
+    {
+      Tick (.05);
+      if ([[controller valueForKey:@"loading"] boolValue])
+        continue;
+      NSArray *rows = [[file stringByDeletingLastPathComponent]
+                         isEqual:[controller valueForKey:@"path"]]
+                          ? [controller items]
+                          : [[controller valueForKey:@"browserRows"]
+                                objectForKey:[file stringByDeletingLastPathComponent]];
+      if (!rows)
+        continue;
+      FVItem *found = nil;
+      NSUInteger i;
+      for (i = 0; i < [rows count]; i++)
+        if ([[[rows objectAtIndex:i] path] isEqual:file])
+          found = [rows objectAtIndex:i];
+      if (!present && !found)
+        return nil;
+      if (present && found
+          && (size == NSNotFound || [[[found attributes] objectForKey:NSFileSize]
+                                        unsignedIntegerValue] == size))
+        return found;
+    }
+  while ([limit timeIntervalSinceNow] > 0);
+  CHECK (NO);
+  return nil;
+}
+
 int
 main (void)
 {
@@ -261,6 +294,37 @@ main (void)
   [browser selectRow:0 inColumn:1];
   CHECK ([[window selectedPaths] count] == 1);
   CHECK ([[[window selectedPaths] objectAtIndex:0] hasSuffix:@"two.txt"]);
+  /* Real timer ticks must update expanded folders, preserving the selected path
+     even when inserted rows change its index. No explicit refresh/check call. */
+  Tick (1.2);
+  NSString *child = [folder stringByAppendingPathComponent:@"aaa.txt"];
+  CHECK ([@"new" writeToFile:child atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+  WaitForItem (window, child, YES, 3);
+  CHECK ([[browser matrixInColumn:1] numberOfRows] == 2);
+  CHECK ([[[window selectedPaths] objectAtIndex:0] hasSuffix:@"two.txt"]);
+  NSString *two = [folder stringByAppendingPathComponent:@"two.txt"];
+  /* In-place edits leave the parent directory's timestamp unchanged. */
+  CHECK ([@"updated contents" writeToFile:two atomically:NO
+                                encoding:NSUTF8StringEncoding error:NULL]);
+  WaitForItem (window, two, YES, 16);
+  CHECK ([[[window selectedPaths] objectAtIndex:0] isEqual:two]);
+  NSString *renamedChild = [folder stringByAppendingPathComponent:@"zzz.txt"];
+  CHECK ([fm moveItemAtPath:child toPath:renamedChild error:NULL]);
+  WaitForItem (window, renamedChild, YES, 3);
+  WaitForItem (window, child, NO, 0);
+  CHECK ([fm removeItemAtPath:renamedChild error:NULL]);
+  WaitForItem (window, renamedChild, NO, 0);
+  WaitForItem (window, two, YES, 16);
+  CHECK ([[browser matrixInColumn:1] numberOfRows] == 1);
+  NSString *rootChange = [root stringByAppendingPathComponent:@"aaa"];
+  CHECK ([fm createDirectoryAtPath:rootChange withIntermediateDirectories:NO
+                        attributes:nil error:NULL]);
+  WaitForItem (window, rootChange, YES, NSNotFound);
+  WaitForItem (window, two, YES, 16);
+  CHECK ([[[window selectedPaths] objectAtIndex:0] isEqual:two]);
+  CHECK ([fm removeItemAtPath:rootChange error:NULL]);
+  WaitForItem (window, rootChange, NO, 0);
+  WaitForItem (window, two, YES, 16);
   Action (window, @"listMode:");
   [window navigate:folder];
   Loaded (window);
@@ -268,6 +332,10 @@ main (void)
   Action (window, @"back:");
   Loaded (window);
   CHECK ([[window items] count] == 2);
+  NSString *one = [root stringByAppendingPathComponent:@"one.txt"];
+  CHECK ([@"longer file" writeToFile:one atomically:NO
+                            encoding:NSUTF8StringEncoding error:NULL]);
+  WaitForItem (window, one, YES, 11);
   Action (window, @"forward:");
   Loaded (window);
   CHECK ([[window items] count] == 1);
