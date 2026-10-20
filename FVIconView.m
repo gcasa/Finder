@@ -132,6 +132,8 @@
 {
   [[self window] makeFirstResponder:self];
   NSInteger i = [self indexAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
+  mouseDownPoint = [event locationInWindow];
+  dragPending = i >= 0 && [event clickCount] == 1;
   if (i < 0)
     [selection removeAllIndexes];
   else if ([event modifierFlags] & NSShiftKeyMask)
@@ -211,6 +213,11 @@
 
 - (void)mouseDragged:(NSEvent *)event
 {
+  NSPoint point = [event locationInWindow];
+  if (!dragPending
+      || (fabs (point.x - mouseDownPoint.x) < 5 && fabs (point.y - mouseDownPoint.y) < 5))
+    return;
+  dragPending = NO;
   NSArray *paths = [owner selectedPaths];
   if (![paths count])
     return;
@@ -224,6 +231,11 @@
        pasteboard:pb
            source:self
         slideBack:YES];
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+  dragPending = NO;
 }
 
 - (NSDragOperation)draggingSourceOperationMaskForLocal:(BOOL)local

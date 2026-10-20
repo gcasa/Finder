@@ -480,10 +480,25 @@ FVPrompt (NSString *title, NSString *value)
       [super mouseDown:event];
       return;
     }
-  NSEvent *next = [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask | NSLeftMouseUpMask
+  NSEvent *next;
+  for (;;)
+    {
+      next = [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask | NSLeftMouseUpMask
                                              untilDate:[NSDate distantFuture]
                                                 inMode:NSEventTrackingRunLoopMode
                                                dequeue:NO];
+      if ([next type] != NSLeftMouseDragged)
+        break;
+      NSPoint location = [next locationInWindow];
+      NSPoint origin = [event locationInWindow];
+      if (fabs (location.x - origin.x) >= 5 || fabs (location.y - origin.y) >= 5)
+        break;
+      /* Discard click jitter, leaving mouse-up queued for native selection. */
+      [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask
+                                untilDate:[NSDate distantFuture]
+                                   inMode:NSEventTrackingRunLoopMode
+                                  dequeue:YES];
+    }
   if ([next type] != NSLeftMouseDragged)
     {
       [super mouseDown:event];
@@ -510,12 +525,12 @@ FVPrompt (NSString *title, NSString *value)
   NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSDragPboard];
   [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
   [pb setPropertyList:paths forType:NSFilenamesPboardType];
-  [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask];
+  next = [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask];
   NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile:[paths objectAtIndex:0]];
   [self dragImage:image
                at:point
            offset:NSZeroSize
-            event:event
+            event:next
        pasteboard:pb
            source:self
         slideBack:YES];

@@ -101,6 +101,94 @@ OperationDone (FVWindow *window)
   Loaded (window);
 }
 
+/* Intercept the native drag session so gestures can be tested without copying. */
+@interface FVBrowserMatrix : NSMatrix
+@end
+
+static unsigned dragStarts;
+
+#define DRAG_PROBE                                                                                  \
+- (void)dragImage:(NSImage *)image at:(NSPoint)point offset:(NSSize)offset                            \
+            event:(NSEvent *)event pasteboard:(NSPasteboard *)pasteboard                             \
+           source:(id)source slideBack:(BOOL)slideBack                                                \
+{                                                                                                  \
+  dragStarts++;                                                                                    \
+}
+
+@interface FVBrowserDragProbe : FVBrowserMatrix
+@end
+
+@implementation FVBrowserDragProbe
+DRAG_PROBE
+
+@end
+
+@interface FVIconDragProbe : FVIconView
+@end
+
+@implementation FVIconDragProbe
+DRAG_PROBE
+
+@end
+
+static NSEvent *
+MouseEvent (NSWindow *window, NSEventType type, NSPoint point)
+{
+  return [NSEvent mouseEventWithType:type location:point modifierFlags:0
+                          timestamp:[NSDate timeIntervalSinceReferenceDate]
+                       windowNumber:[window windowNumber] context:nil
+                        eventNumber:0 clickCount:1 pressure:1];
+}
+
+static void
+CheckClickJitter (FVWindow *controller)
+{
+  NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect (0, 0, 300, 200)
+                                               styleMask:NSBorderlessWindowMask
+                                                 backing:NSBackingStoreBuffered defer:NO];
+  FVBrowserDragProbe *matrix = [[FVBrowserDragProbe alloc]
+      initWithFrame:NSMakeRect (0, 0, 300, 200) mode:NSListModeMatrix
+          cellClass:[NSBrowserCell class] numberOfRows:1 numberOfColumns:1];
+  [[matrix cellAtRow:0 column:0] setRepresentedObject:@"/tmp"];
+  [[window contentView] addSubview:matrix];
+  NSRect cell = [matrix cellFrameAtRow:0 column:0];
+  NSPoint origin = [matrix convertPoint:NSMakePoint (NSMidX (cell), NSMidY (cell)) toView:nil];
+  NSPoint jitter = NSMakePoint (origin.x + 1, origin.y + 1);
+  NSPoint drag = NSMakePoint (origin.x + 12, origin.y);
+  NSEvent *down = MouseEvent (window, NSLeftMouseDown, origin);
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseDragged, jitter) atStart:NO];
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseUp, jitter) atStart:NO];
+  [matrix mouseDown:down];
+  CHECK (dragStarts == 0);
+  CHECK ([matrix selectedRow] == 0);
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseDragged, jitter) atStart:NO];
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseDragged, drag) atStart:NO];
+  [matrix mouseDown:down];
+  CHECK (dragStarts == 1);
+  [matrix removeFromSuperview];
+  [matrix release];
+
+  FVIconDragProbe *icons = [[FVIconDragProbe alloc] initWithOwner:controller];
+  [[window contentView] addSubview:icons];
+  origin = [icons convertPoint:NSMakePoint (30, 30) toView:nil];
+  down = MouseEvent (window, NSLeftMouseDown, origin);
+  jitter = NSMakePoint (origin.x + 1, origin.y + 1);
+  drag = NSMakePoint (origin.x + 12, origin.y);
+  [icons mouseDown:down];
+  [icons mouseDragged:MouseEvent (window, NSLeftMouseDragged, jitter)];
+  CHECK (dragStarts == 1);
+  CHECK ([[icons selection] containsIndex:0]);
+  [icons mouseDragged:MouseEvent (window, NSLeftMouseDragged, drag)];
+  CHECK (dragStarts == 2);
+  [icons mouseDown:down];
+  [icons mouseUp:MouseEvent (window, NSLeftMouseUp, jitter)];
+  [icons mouseDragged:MouseEvent (window, NSLeftMouseDragged, drag)];
+  CHECK (dragStarts == 2);
+  [icons removeFromSuperview];
+  [icons release];
+  [window release];
+}
+
 int
 main (void)
 {
@@ -158,6 +246,7 @@ main (void)
   FVIconView *icons = [window valueForKey:@"icons"];
   CHECK ([[window valueForKey:@"scroll"] documentView] == icons);
   CHECK ([[window selectedPaths] count] == 1);
+  CheckClickJitter (window);
   [icons selectAll:nil];
   CHECK ([[window selectedPaths] count] == 2);
   Action (window, @"listMode:");

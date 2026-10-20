@@ -6,6 +6,8 @@
   NSMutableIndexSet *selection;
   CGFloat tileSize;
   NSInteger anchor;
+  NSPoint mouseDownPoint;
+  BOOL dragPending;
 }
 
 - (id)initWithOwner:(FVWindow *)controller;
