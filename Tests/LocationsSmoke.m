@@ -1,6 +1,8 @@
 #import <AppKit/AppKit.h>
 #import "FVWindow.h"
 #import "FVLauncher.h"
+#import "FVApplication.h"
+#include <objc/runtime.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -119,6 +121,20 @@ MenuForItem (NSOutlineView *outline, id item)
 {
   NSRect rect = [outline rectOfRow:[outline rowForItem:item]];
   return MenuAtPoint (outline, NSMakePoint (NSMidX (rect), NSMidY (rect)));
+}
+
+static id
+FixtureVolumes (id workspace, SEL selector, ...)
+{
+  return [NSArray arrayWithObjects:@"/", @"/run", @"/run/user/1000/gvfs",
+      @"/run/media/disk", @"/runner", @"/media/disk", nil];
+}
+
+static NSArray *
+MountedPaths (FVWindow *window)
+{
+  return [[[[window valueForKey:@"places"] objectAtIndex:2]
+      objectForKey:@"children"] valueForKey:@"path"];
 }
 
 int
@@ -336,6 +352,44 @@ main (void)
                                    forType:NSFilenamesPboardType];
   CHECK ([source outlineView:outline validateDrop:(id)drag proposedItem:nil proposedChildIndex:-1]
       == NSDragOperationNone);
+  /* Exercise the preference with deterministic mount paths, without mounting anything. */
+  [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
+  CHECK (FVExcludeRunFilesystems ());
+  Method volumesMethod = class_getInstanceMethod ([NSWorkspace class],
+      @selector (mountedLocalVolumePaths));
+  IMP originalVolumes = method_setImplementation (volumesMethod, FixtureVolumes);
+  [window performSelector:@selector (rebuildPlaces)];
+  NSArray *filtered = [NSArray arrayWithObjects:@"/", @"/runner", @"/media/disk", nil];
+  CHECK ([MountedPaths (window) isEqual:filtered]);
+  FVWindow *secondWindow = [[FVWindow alloc] initWithPath:root];
+  CHECK ([MountedPaths (secondWindow) isEqual:filtered]);
+  FVApplication *application = [FVApplication new];
+  [application preferences:nil];
+  NSButton *excludeRun = [application valueForKey:@"excludeRunCheckbox"];
+  CHECK ([excludeRun state] == NSOnState);
+  [excludeRun performClick:nil];
+  CHECK (![defaults boolForKey:@"ExcludeRunFilesystems"]);
+  CHECK ([MountedPaths (window) isEqual:FixtureVolumes (nil, NULL)]);
+  CHECK ([MountedPaths (secondWindow) isEqual:FixtureVolumes (nil, NULL)]);
+  [[application valueForKey:@"preferencesPanel"] orderOut:nil];
+  [application preferences:nil];
+  CHECK ([excludeRun state] == NSOffState);
+  [excludeRun performClick:nil];
+  CHECK ([MountedPaths (window) isEqual:filtered]);
+  CHECK ([MountedPaths (secondWindow) isEqual:filtered]);
+  NSView *preferencesView = [[application valueForKey:@"preferencesPanel"] contentView];
+  [preferencesView display];
+  NSBitmapImageRep *snapshot = [preferencesView bitmapImageRepForCachingDisplayInRect:
+      [preferencesView bounds]];
+  [preferencesView cacheDisplayInRect:[preferencesView bounds] toBitmapImageRep:snapshot];
+  CHECK ([[snapshot representationUsingType:NSPNGFileType properties:[NSDictionary dictionary]]
+      writeToFile:@"obj/tests/location-preferences.png" atomically:YES]);
+  [[application valueForKey:@"preferencesPanel"] close];
+  [application release];
+  [[secondWindow window] close];
+  [secondWindow release];
+  method_setImplementation (volumesMethod, originalVolumes);
+  [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
   [[window window] close];
   Tick (.1);
   [window release];

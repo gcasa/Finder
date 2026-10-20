@@ -16,6 +16,13 @@ FVFilenameTooltipsEnabled (void)
   return value == nil || [value boolValue];
 }
 
+BOOL
+FVExcludeRunFilesystems (void)
+{
+  id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"ExcludeRunFilesystems"];
+  return value == nil || [value boolValue];
+}
+
 @interface FVRecentParser : NSObject
 {
   NSMutableArray *records;

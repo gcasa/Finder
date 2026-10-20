@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 extern NSString * const FVRecentsLocation;
 BOOL FVFilenameTooltipsEnabled (void);
+BOOL FVExcludeRunFilesystems (void);
 
 @interface FVRecents : NSObject
 + (void)recordPath:(NSString *)path;

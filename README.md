@@ -55,7 +55,11 @@ Inspected development environment:
   with icons and no grid lines. Common locations include Home, existing
   Desktop/Documents/Downloads/Pictures/Music/Videos and the home Trash when it
   exists. Mounted volumes, including the root filesystem, appear under Mounted
-  instead of Common Locations. Drag files, folders, or applications
+  instead of Common Locations. Filesystems mounted at `/run` or beneath it are
+  excluded by default. Preferences → Exclude filesystems mounted under /run
+  remembers your choice and updates all open windows immediately. This only
+  filters the Mounted group; you can still browse those paths directly.
+  Drag files, folders, or applications
   into the outline to save favorites without copying them. Click a favorite to
   open it; right-click a favorite and choose Remove from Favorites to remove
   that shortcut. Go → Remove Favorite removes the selected favorite. XDG

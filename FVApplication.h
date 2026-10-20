@@ -7,6 +7,7 @@
   NSPanel *preferencesPanel;
   NSButton *thumbnailCheckbox;
   NSButton *filenameTooltipCheckbox;
+  NSButton *excludeRunCheckbox;
 }
 
 - (void)newWindow:(id)sender;

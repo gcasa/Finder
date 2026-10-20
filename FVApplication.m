@@ -129,23 +129,29 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   if (!preferencesPanel)
     {
       preferencesPanel = [[NSPanel alloc]
-          initWithContentRect:NSMakeRect (0, 0, 430, 170)
+          initWithContentRect:NSMakeRect (0, 0, 430, 210)
                     styleMask:NSTitledWindowMask | NSClosableWindowMask
                       backing:NSBackingStoreBuffered defer:NO];
       [preferencesPanel setTitle:@"Preferences"];
       [preferencesPanel setReleasedWhenClosed:NO];
-      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 116, 390, 28)];
+      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 156, 390, 28)];
       [thumbnailCheckbox setButtonType:NSSwitchButton];
       [thumbnailCheckbox setTitle:@"Show thumbnails"];
       [thumbnailCheckbox setTarget:self];
       [thumbnailCheckbox setAction:@selector (toggleThumbnails:)];
       [[preferencesPanel contentView] addSubview:thumbnailCheckbox];
-      filenameTooltipCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      filenameTooltipCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 116, 390, 28)];
       [filenameTooltipCheckbox setButtonType:NSSwitchButton];
       [filenameTooltipCheckbox setTitle:@"Show full filenames on hover"];
       [filenameTooltipCheckbox setTarget:self];
       [filenameTooltipCheckbox setAction:@selector (toggleFilenameTooltips:)];
       [[preferencesPanel contentView] addSubview:filenameTooltipCheckbox];
+      excludeRunCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      [excludeRunCheckbox setButtonType:NSSwitchButton];
+      [excludeRunCheckbox setTitle:@"Exclude filesystems mounted under /run"];
+      [excludeRunCheckbox setTarget:self];
+      [excludeRunCheckbox setAction:@selector (toggleRunFilesystems:)];
+      [[preferencesPanel contentView] addSubview:excludeRunCheckbox];
       NSTextField *label = [[[NSTextField alloc]
           initWithFrame:NSMakeRect (24, 20, 380, 45)] autorelease];
       [label setStringValue:@"Changes apply to all open windows."];
@@ -159,6 +165,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
     }
   [thumbnailCheckbox setState:[FVThumbnailOperation enabled] ? NSOnState : NSOffState];
   [filenameTooltipCheckbox setState:FVFilenameTooltipsEnabled () ? NSOnState : NSOffState];
+  [excludeRunCheckbox setState:FVExcludeRunFilesystems () ? NSOnState : NSOffState];
   [preferencesPanel makeKeyAndOrderFront:self];
 }
 
@@ -178,8 +185,17 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
                                                     object:self];
 }
 
+- (void)toggleRunFilesystems:(id)sender
+{
+  [[NSUserDefaults standardUserDefaults] setBool:[sender state] == NSOnState
+                                         forKey:@"ExcludeRunFilesystems"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVLocationPreferencesChanged"
+                                                    object:self];
+}
+
 - (void)dealloc
 {
+  [excludeRunCheckbox release];
   [thumbnailCheckbox release];
   [filenameTooltipCheckbox release];
   [preferencesPanel release];

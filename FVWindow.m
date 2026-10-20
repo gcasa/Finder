@@ -744,6 +744,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
           selector:@selector (recentsChanged:) name:@"FVRecentsChanged" object:nil];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (filenameTooltipsChanged:) name:@"FVFilenameTooltipsChanged" object:nil];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (locationPreferencesChanged:) name:@"FVLocationPreferencesChanged" object:nil];
       browserRows = [NSMutableDictionary new];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
       NSView *content = [window contentView];
@@ -871,6 +873,11 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   return self;
 }
 
+- (void)locationPreferencesChanged:(NSNotification *)notification
+{
+  [self rebuildPlaces];
+}
+
 - (void)rebuildPlaces
 {
   NSMutableArray *p = [NSMutableArray arrayWithObjects:NSHomeDirectory (), @"/", nil];
@@ -927,9 +934,12 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   NSMutableArray *mounted = [NSMutableArray array];
   NSMutableSet *mountedPaths = [NSMutableSet set];
   NSArray *volumes = [[NSWorkspace sharedWorkspace] mountedLocalVolumePaths];
+  BOOL excludeRun = FVExcludeRunFilesystems ();
   for (i = 0; i < [volumes count]; i++)
     {
       NSString *volume = [volumes objectAtIndex:i];
+      if (excludeRun && ([volume isEqual:@"/run"] || [volume hasPrefix:@"/run/"]))
+        continue;
       if ([volume hasPrefix:@"/proc"] || [volume hasPrefix:@"/sys"]
           || ([volume hasPrefix:@"/dev"] && ![volume isEqual:@"/dev/shm"]))
         continue;
