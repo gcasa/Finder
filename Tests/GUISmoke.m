@@ -80,6 +80,7 @@ CheckLayout (FVWindow *controller)
 }
 
 @interface FVDialogAnswer : NSObject
+
 @end
 
 @implementation FVDialogAnswer
@@ -134,6 +135,7 @@ OperationDone (FVWindow *window)
 
 /* Intercept the native drag session so gestures can be tested without copying. */
 @interface FVBrowserMatrix : NSMatrix
+
 @end
 
 static unsigned dragStarts;
@@ -147,6 +149,7 @@ static unsigned dragStarts;
 }
 
 @interface FVBrowserDragProbe : FVBrowserMatrix
+
 @end
 
 @implementation FVBrowserDragProbe
@@ -155,6 +158,7 @@ DRAG_PROBE
 @end
 
 @interface FVIconDragProbe : FVIconView
+
 @end
 
 @implementation FVIconDragProbe

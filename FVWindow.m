@@ -30,6 +30,7 @@
 @interface FVWindow (Activity)
 - (NSInteger)runDialog:(FVDialog *)dialog;
 - (void)updateActivity;
+
 @end
 
 /* Apply the same visibility policy to every Locations section and mount poll. */
@@ -250,6 +251,7 @@ FVCompare (id lhs, id rhs, void *context)
 - (id)initWithApplications:(NSArray *)applications file:(NSString *)path;
 - (NSString *)selectedApplication;
 - (void)browseApplication:(id)sender;
+
 @end
 
 @implementation FVDialog
@@ -474,6 +476,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 }
 
 @interface FVSidebarView : NSOutlineView
+
 @end
 
 @implementation FVSidebarView
@@ -504,6 +507,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 }
 
 - (void)updateFileTooltips;
+
 @end
 
 @implementation FVTableView
@@ -588,6 +592,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
    and add only the missing drag initiation. */
 @interface FVBrowserMatrix : NSMatrix
 - (void)updateFileTooltips;
+
 @end
 
 @implementation FVBrowserMatrix
@@ -694,6 +699,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 }
 
 - (void)setOwner:(FVWindow *)controller;
+
 @end
 
 @implementation FVMediaBrowserCell
@@ -718,6 +724,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @interface FVNameCell : NSTextFieldCell
+
 @end
 
 @implementation FVNameCell

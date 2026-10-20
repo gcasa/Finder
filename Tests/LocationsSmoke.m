@@ -33,6 +33,7 @@ static unsigned checks;
 - (void)sidebarClicked:(id)sender;
 - (void)removeFavorite:(id)sender;
 - (NSString *)chooseApplicationForFile:(NSString *)path;
+
 @end
 
 @protocol FVDialogTesting
@@ -40,9 +41,11 @@ static unsigned checks;
 - (NSString *)selectedApplication;
 - (NSInteger)run;
 - (BOOL)apply;
+
 @end
 
 @interface FVChooseTest : NSObject
+
 @end
 
 @implementation FVChooseTest
@@ -79,6 +82,7 @@ static unsigned checks;
 }
 
 - (NSPasteboard *)draggingPasteboard;
+
 @end
 
 @implementation FVTestDrag

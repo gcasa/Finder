@@ -27,6 +27,7 @@
 - (NSRect)rectForIndex:(NSUInteger)index;
 - (NSInteger)indexAtPoint:(NSPoint)point;
 - (NSInteger)columns;
+
 @end
 
 @interface FVFilenameWindow : FVWindow

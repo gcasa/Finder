@@ -25,6 +25,7 @@
 
 @interface FVSlowViewer : NSObject
 - (BOOL)application:(id)application openFile:(NSString *)path;
+
 @end
 
 @implementation FVSlowViewer
@@ -47,6 +48,7 @@
 
 - (void)completed:(NSDictionary *)result;
 - (void)tick:(NSTimer *)timer;
+
 @end
 
 @implementation FVLaunchObserver

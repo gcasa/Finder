@@ -30,4 +30,5 @@
 + (BOOL)enabled;
 + (BOOL)supportsPath:(NSString *)value;
 - (id)initWithPath:(NSString *)value generation:(NSUInteger)token target:(id)receiver;
+
 @end

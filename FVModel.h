@@ -26,12 +26,14 @@ BOOL FVExcludeRunFilesystems (void);
 @interface FVMounts : NSObject
 + (NSArray *)networkPaths;
 + (NSArray *)networkPathsFromMountTable:(NSString *)filename;
+
 @end
 
 @interface FVRecents : NSObject
 + (void)recordPath:(NSString *)path;
 + (NSArray *)records;
 + (NSString *)sharedHistoryPath;
+
 @end
 
 @interface FVItem : NSObject
@@ -52,6 +54,7 @@ BOOL FVExcludeRunFilesystems (void);
 - (BOOL)link;
 - (NSString *)kind;
 - (id)valueForColumn:(NSString *)key;
+
 @end
 
 @interface FVListing : NSObject
@@ -73,4 +76,5 @@ BOOL FVExcludeRunFilesystems (void);
             target:(id)receiver;
 - (void)start;
 - (void)cancel;
+
 @end

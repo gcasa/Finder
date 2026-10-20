@@ -45,4 +45,5 @@
 + (BOOL)validName:(NSString *)name;
 + (NSString *)homeTrash;
 + (BOOL)trashPath:(NSString *)source error:(NSError **)error;
+
 @end

@@ -23,6 +23,7 @@
 + (BOOL)launchApplication:(NSString *)application file:(NSString *)path
                   binary:(NSString *)binary host:(NSString *)host;
 + (void)willLaunch:(NSDictionary *)info;
+
 @end
 
 @interface FVLaunchRequest : NSObject
@@ -40,6 +41,7 @@
                   target:(id)receiver selector:(SEL)action;
 - (void)run;
 - (void)complete;
+
 @end
 
 @implementation FVLaunchRequest

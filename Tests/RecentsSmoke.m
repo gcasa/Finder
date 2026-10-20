@@ -25,6 +25,7 @@
 - (void)sidebarClicked:(id)sender;
 - (void)launchFinished:(NSDictionary *)result;
 - (BOOL)validateMenuItem:(NSMenuItem *)item;
+
 @end
 
 static unsigned checks;

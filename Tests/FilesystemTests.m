@@ -117,6 +117,7 @@ Exists (NSString *p)
 @end
 
 @interface FVCrossDevice : FVOperations
+
 @end
 
 @implementation FVCrossDevice

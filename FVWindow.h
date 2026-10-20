@@ -89,4 +89,5 @@
 - (void)operationFinished:(NSDictionary *)result;
 - (void)operationProgress:(NSString *)message;
 - (void)resolveConflict:(NSMutableDictionary *)request;
+
 @end

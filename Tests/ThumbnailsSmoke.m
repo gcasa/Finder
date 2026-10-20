@@ -81,9 +81,11 @@ CheckColor (NSImage *image, BOOL red)
 
 @interface FVThumbnailOperation (Testing)
 - (NSData *)renderWithTool:(NSString *)name arguments:(NSArray *)arguments output:(NSString *)output;
+
 @end
 
 @interface FVFallbackThumbnail : FVThumbnailOperation
+
 @end
 
 @implementation FVFallbackThumbnail
@@ -103,6 +105,7 @@ CheckColor (NSImage *image, BOOL red)
 
 - (void)thumbnailLoaded:(NSDictionary *)value;
 - (NSDictionary *)result;
+
 @end
 
 @implementation FVThumbnailReceiver

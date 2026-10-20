@@ -96,6 +96,7 @@ FVExcludeRunFilesystems (void)
 }
 
 - (NSArray *)records;
+
 @end
 
 @implementation FVRecentParser
@@ -232,6 +233,7 @@ FVExcludeRunFilesystems (void)
 }
 
 + (id)itemWithRecord:(NSDictionary *)record;
+
 @end
 
 @implementation FVRecentItem

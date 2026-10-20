@@ -38,4 +38,5 @@
 - (void)reload;
 - (void)resizeIcons:(CGFloat)delta;
 - (void)updateFileTooltips;
+
 @end

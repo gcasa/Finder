@@ -26,4 +26,5 @@
 + (BOOL)launchApplication:(NSString *)application file:(NSString *)path;
 + (void)launchApplication:(NSString *)application file:(NSString *)path
         completionTarget:(id)target selector:(SEL)selector;
+
 @end
