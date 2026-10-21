@@ -7,6 +7,10 @@ In that configuration, `gopen .` opens the directory in FileViewer. Explicit
 application choices and file opening continue through NSWorkspace associations.
 FileViewer does not change global GNUstep configuration on startup.
 
+## Screenshot
+
+<img width="1358" height="1068" alt="Finder" src="https://github.com/user-attachments/assets/5387cd2b-87e4-4f22-8937-ed31e30b71e6" />
+
 ## Build and launch
 
 Prerequisites: GNUstep Make, Base and GUI development headers/libraries, an
