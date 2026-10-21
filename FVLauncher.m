@@ -64,7 +64,7 @@
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   success = [FVLauncher launchApplication:application file:path binary:binary host:host];
   [self performSelectorOnMainThread:@selector (complete) withObject:nil waitUntilDone:NO];
   [pool drain];

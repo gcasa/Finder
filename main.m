@@ -23,9 +23,9 @@
 int
 main (int argc, const char **argv)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
-  FVApplication *delegate = [FVApplication new];
+  FVApplication *delegate = [[FVApplication alloc] init];
   [NSApp setDelegate:delegate];
   [NSApp run];
   [delegate release];

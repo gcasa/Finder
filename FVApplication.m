@@ -40,7 +40,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
 
 - (void)applicationDidFinishLaunching:(NSNotification *)note
 {
-  windows = [NSMutableArray new];
+  windows = [[NSMutableArray alloc] init];
   NSImage *icon = [NSImage imageNamed:@"FileViewer.png"];
   if (icon)
     [NSApp setApplicationIconImage:icon];
@@ -119,7 +119,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   else
     {
       if (!pendingPaths)
-        pendingPaths = [NSMutableArray new];
+        pendingPaths = [[NSMutableArray alloc] init];
       [pendingPaths addObject:filename];
     }
   return YES;

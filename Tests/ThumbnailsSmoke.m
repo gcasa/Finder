@@ -38,7 +38,7 @@ Tick (double seconds)
 static void
 Fixture (NSString *output, BOOL movie, NSString *color)
 {
-  NSTask *task = [NSTask new];
+  NSTask *task = [[NSTask alloc] init];
   [task setLaunchPath:@"/usr/bin/ffmpeg"];
   [task setArguments:[NSArray arrayWithObjects:@"-v", @"error", @"-f", @"lavfi",
       @"-i", [NSString stringWithFormat:@"color=c=%@:s=160x90:d=1", color],
@@ -143,7 +143,7 @@ Capture (NSView *view, NSString *file)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -159,7 +159,7 @@ main (void)
   Fixture (photo, NO, @"red");
   Fixture (movie, YES, @"blue");
   NSString *covered = [root stringByAppendingPathComponent:@"movie with cover.mp4"];
-  NSTask *coverTask = [NSTask new];
+  NSTask *coverTask = [[NSTask alloc] init];
   [coverTask setLaunchPath:@"/usr/bin/ffmpeg"];
   [coverTask setArguments:[NSArray arrayWithObjects:@"-v", @"error", @"-i", movie,
       @"-i", photo, @"-map", @"0:v", @"-map", @"1:v", @"-c", @"copy",
@@ -178,10 +178,10 @@ main (void)
   NSImage *first = [[Preview (window, photo) retain] autorelease];
   CheckColor (Preview (window, movie), NO);
   CheckColor (Preview (window, covered), YES);
-  FVThumbnailReceiver *receiver = [FVThumbnailReceiver new];
+  FVThumbnailReceiver *receiver = [[FVThumbnailReceiver alloc] init];
   FVFallbackThumbnail *fallback = [[FVFallbackThumbnail alloc]
       initWithPath:movie generation:0 target:receiver];
-  NSOperationQueue *queue = [NSOperationQueue new];
+  NSOperationQueue *queue = [[NSOperationQueue alloc] init];
   [queue addOperation:fallback];
   NSDate *fallbackLimit = [NSDate dateWithTimeIntervalSinceNow:12];
   while (![receiver result] && [fallbackLimit timeIntervalSinceNow] > 0)
@@ -201,7 +201,7 @@ main (void)
   CHECK ([window iconForPath:broken] != nil);
   CHECK (![FVThumbnailOperation supportsPath:[root stringByAppendingPathComponent:@"text.txt"]]);
 
-  FVApplication *application = [FVApplication new];
+  FVApplication *application = [[FVApplication alloc] init];
   [application preferences:nil];
   NSButton *checkbox = [application valueForKey:@"thumbnailCheckbox"];
   CHECK ([checkbox state] == NSOnState);

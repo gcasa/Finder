@@ -28,8 +28,8 @@
   if ((self = [super initWithFrame:NSMakeRect (0, 0, 600, 400)]))
     {
       owner = controller;
-      selection = [NSMutableIndexSet new];
-      rowOffsets = [NSMutableArray new];
+      selection = [[NSMutableIndexSet alloc] init];
+      rowOffsets = [[NSMutableArray alloc] init];
       tileSize = 112;
       anchor = 0;
       [self setAutoresizingMask:NSViewWidthSizable];

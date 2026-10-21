@@ -105,7 +105,7 @@ FVExcludeRunFilesystems (void)
 - (id)init
 {
   if ((self = [super init]))
-    records = [NSMutableArray new];
+    records = [[NSMutableArray alloc] init];
   return self;
 }
 
@@ -434,7 +434,7 @@ FVExcludeRunFilesystems (void)
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   if ([path isEqual:FVRecentsLocation])
     {
       NSArray *records = [FVRecents records];
@@ -458,8 +458,8 @@ FVExcludeRunFilesystems (void)
     }
   NSMutableArray *pending = [NSMutableArray arrayWithObject:path];
   NSMutableSet *visited = [NSMutableSet set];
-  NSMutableArray *batch = [NSMutableArray new];
-  NSMutableArray *errors = [NSMutableArray new];
+  NSMutableArray *batch = [[NSMutableArray alloc] init];
+  NSMutableArray *errors = [[NSMutableArray alloc] init];
   while ([pending count] && ![self cancelled])
     {
       NSString *folder = [[[pending lastObject] retain] autorelease];
@@ -500,7 +500,7 @@ FVExcludeRunFilesystems (void)
             continue;
           if (!hidden && entry->d_name[0] == '.')
             continue;
-          NSAutoreleasePool *entryPool = [NSAutoreleasePool new];
+          NSAutoreleasePool *entryPool = [[NSAutoreleasePool alloc] init];
           NSString *name = [[NSFileManager defaultManager]
               stringWithFileSystemRepresentation:entry->d_name
                                           length:strlen (entry->d_name)];
@@ -522,8 +522,8 @@ FVExcludeRunFilesystems (void)
               [self deliver:batch errors:errors done:NO];
               [batch release];
               [errors release];
-              batch = [NSMutableArray new];
-              errors = [NSMutableArray new];
+              batch = [[NSMutableArray alloc] init];
+              errors = [[NSMutableArray alloc] init];
             }
           [entryPool drain];
         }

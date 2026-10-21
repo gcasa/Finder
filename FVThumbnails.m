@@ -69,7 +69,7 @@
     }
   if (!executable || [self isCancelled])
     return nil;
-  NSTask *task = [NSTask new];
+  NSTask *task = [[NSTask alloc] init];
   NSData *data = nil;
   @try
     {
@@ -112,7 +112,7 @@
 
 - (void)main
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   NSFileManager *fm = [NSFileManager defaultManager];
   NSString *temporary = nil;
   NSData *data = nil;

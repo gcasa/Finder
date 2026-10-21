@@ -65,7 +65,7 @@ Exists (NSString *p)
 - (id)init
 {
   if ((self = [super init]))
-    items = [NSMutableArray new];
+    items = [[NSMutableArray alloc] init];
   return self;
 }
 
@@ -144,7 +144,7 @@ Wait (FVReceiver *receiver)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   char temp[] = "/tmp/fileviewer-tests-XXXXXX";
   CHECK (mkdtemp (temp) != NULL);
   NSString *root = [NSString stringWithUTF8String:temp];
@@ -209,7 +209,7 @@ main (void)
   CHECK (![job transfer:src to:copy move:NO error:&error]);
   CHECK (!Exists (copy));
   [job release];
-  FVReceiver *receiver = [FVReceiver new];
+  FVReceiver *receiver = [[FVReceiver alloc] init];
   FVListing *listing = [[FVListing alloc] initWithPath:src
                                                  query:@""
                                                 hidden:NO
@@ -221,7 +221,7 @@ main (void)
   CHECK ([receiver->items count] == 7);
   [listing release];
   [receiver release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   listing = [[FVListing alloc] initWithPath:src
                                       query:@""
                                      hidden:YES
@@ -233,7 +233,7 @@ main (void)
   CHECK ([receiver->items count] == 6);
   [listing release];
   [receiver release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   listing = [[FVListing alloc] initWithPath:dst
                                       query:@"no-match"
                                      hidden:YES
@@ -247,7 +247,7 @@ main (void)
   [receiver release];
   NSString *locked = [root stringByAppendingPathComponent:@"inaccessible"];
   CHECK (mkdir ([locked fileSystemRepresentation], 0000) == 0);
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   listing = [[FVListing alloc] initWithPath:locked
                                       query:@""
                                      hidden:YES
@@ -260,7 +260,7 @@ main (void)
   [listing release];
   [receiver release];
   chmod ([locked fileSystemRepresentation], 0700);
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc]
       initWithKind:@"copy"
            sources:[NSArray arrayWithObjects:[src stringByAppendingPathComponent:@"-leading"],
@@ -274,7 +274,7 @@ main (void)
   CHECK ([[receiver->result objectForKey:@"failed"] count] == 1);
   [job release];
   [receiver release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   receiver->choice = @"keep";
   job = [[FVOperations alloc]
       initWithKind:@"copy"
@@ -341,7 +341,7 @@ main (void)
   CHECK (!Exists (cancelledCopy));
   CHECK (Exists (large));
   [job release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   receiver->choice = @"skip";
   job = [[FVOperations alloc]
       initWithKind:@"copy"
@@ -353,7 +353,7 @@ main (void)
   CHECK ([[receiver->result objectForKey:@"skipped"] count] == 1);
   [job release];
   [receiver release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   receiver->choice = @"cancel";
   job = [[FVOperations alloc]
       initWithKind:@"copy"
@@ -367,7 +367,7 @@ main (void)
   [job release];
   [receiver release];
   Write ([src stringByAppendingPathComponent:@"-leading"], @"new contents");
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   receiver->choice = @"replace";
   job = [[FVOperations alloc]
       initWithKind:@"copy"
@@ -394,7 +394,7 @@ main (void)
   NSString *undoSource = [src stringByAppendingPathComponent:@"undo-source"],
            *undoDest = [dst stringByAppendingPathComponent:@"undo-target"];
   Write (undoSource, @"undo contents");
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc] initWithKind:@"rename"
                                    sources:[NSArray arrayWithObject:undoSource]
                                destination:undoDest
@@ -416,7 +416,7 @@ main (void)
   CHECK (!Exists (undoDest));
   [record release];
   [job release];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc] initWithKind:@"rename"
                                    sources:[NSArray arrayWithObject:undoSource]
                                destination:undoDest
@@ -433,7 +433,7 @@ main (void)
   [job release];
   [record release];
   NSString *undoFolder = [root stringByAppendingPathComponent:@"undo-folder"];
-  receiver = [FVReceiver new];
+  receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc] initWithKind:@"mkdir"
                                    sources:[NSArray arrayWithObject:undoFolder]
                                destination:nil

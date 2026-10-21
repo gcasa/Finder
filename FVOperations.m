@@ -364,7 +364,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
       sources = [paths copy];
       destination = [folder copy];
       target = [receiver retain];
-      notes = [NSMutableArray new];
+      notes = [[NSMutableArray alloc] init];
     }
   return self;
 }
@@ -627,7 +627,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   NSMutableArray *completed = [NSMutableArray array], *failed = [NSMutableArray array],
                  *skipped = [NSMutableArray array], *undo = [NSMutableArray array];
   NSUInteger i;

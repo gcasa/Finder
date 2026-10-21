@@ -58,7 +58,7 @@ Record (NSString *file, NSTimeInterval time)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSFileManager *fm = [NSFileManager defaultManager];

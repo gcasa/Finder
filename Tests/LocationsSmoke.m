@@ -184,7 +184,7 @@ MountedPaths (FVWindow *window)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   /* Volatile arguments isolate these settings from the user's preferences. */
@@ -251,7 +251,7 @@ main (void)
   CHECK ([outline numberOfRows] == 4);
   [outline expandItem:common];
   CHECK ([outline numberOfRows] > 3);
-  FVTestDrag *drag = [FVTestDrag new];
+  FVTestDrag *drag = [[FVTestDrag alloc] init];
   [[drag draggingPasteboard] declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
   [[drag draggingPasteboard] setPropertyList:[NSArray arrayWithObjects:root, app, document, nil]
                                    forType:NSFilenamesPboardType];
@@ -320,7 +320,7 @@ main (void)
         }
     }
   CHECK (foundTitle);
-  FVChooseTest *answer = [FVChooseTest new];
+  FVChooseTest *answer = [[FVChooseTest alloc] init];
   NSTimer *timer = [NSTimer timerWithTimeInterval:.1 target:answer selector:@selector (choose:)
                                         userInfo:[NSNumber numberWithInt:0] repeats:NO];
   [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSModalPanelRunLoopMode];
@@ -410,7 +410,7 @@ main (void)
   CHECK ([MountedPaths (window) isEqual:filtered]);
   FVWindow *secondWindow = [[FVWindow alloc] initWithPath:root];
   CHECK ([MountedPaths (secondWindow) isEqual:filtered]);
-  FVApplication *application = [FVApplication new];
+  FVApplication *application = [[FVApplication alloc] init];
   [application preferences:nil];
   NSButton *hiddenFiles = [application valueForKey:@"hiddenFilesCheckbox"];
   CHECK ([defaults objectForKey:@"Hidden"] == nil);

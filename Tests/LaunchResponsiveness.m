@@ -80,7 +80,7 @@ Tick (double seconds)
 int
 main (int argc, char **argv)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   if (argc == 4)
     {
       NSConnection *connection = [NSConnection defaultConnection];
@@ -116,7 +116,7 @@ main (int argc, char **argv)
   while (![fm fileExistsAtPath:ready] && [limit timeIntervalSinceNow] > 0)
     Tick (.01);
   CHECK ([fm fileExistsAtPath:ready]);
-  FVLaunchObserver *observer = [FVLaunchObserver new];
+  FVLaunchObserver *observer = [[FVLaunchObserver alloc] init];
   NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:.02 target:observer
       selector:@selector (tick:) userInfo:nil repeats:YES];
   NSDate *start = [NSDate date];

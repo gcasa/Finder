@@ -114,7 +114,7 @@ Capture (NSView *view, NSString *file)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -179,7 +179,7 @@ main (void)
         context:nil eventNumber:0 clickCount:clicks pressure:1]];
   CHECK ([[[controller valueForKey:@"openedPaths"] objectAtIndex:0] isEqual:nextFile]);
   [icons setSelection:[NSIndexSet indexSetWithIndex:0]];
-  FVApplication *application = [FVApplication new];
+  FVApplication *application = [[FVApplication alloc] init];
   [application preferences:nil];
   NSButton *checkbox = [application valueForKey:@"filenameTooltipCheckbox"];
   CHECK ([checkbox state] == NSOnState);

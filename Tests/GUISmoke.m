@@ -298,7 +298,7 @@ WaitForItem (FVWindow *controller, NSString *file, BOOL present, NSUInteger size
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   char temp[] = "/tmp/fileviewer-gui-XXXXXX";

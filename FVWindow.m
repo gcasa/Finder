@@ -570,7 +570,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       && !([event modifierFlags] & (NSCommandKeyMask | NSControlKeyMask | NSAlternateKeyMask)))
     {
       if (!typed)
-        typed = [NSMutableString new];
+        typed = [[NSMutableString alloc] init];
       if ([event timestamp] - lastTyped > 1)
         [typed setString:@""];
       lastTyped = [event timestamp];
@@ -790,19 +790,19 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [window setMinSize:NSMakeSize (760, 400)];
       [window setFrameAutosaveName:@"FileViewer"];
       cutChangeCount = -1;
-      infoPanels = [NSMutableArray new];
-      items = [NSMutableArray new];
-      history = [NSMutableArray new];
+      infoPanels = [[NSMutableArray alloc] init];
+      items = [[NSMutableArray alloc] init];
+      history = [[NSMutableArray alloc] init];
       historyIndex = -1;
       ascending = YES;
       foldersFirst = ![[NSUserDefaults standardUserDefaults] boolForKey:@"FilesBeforeFolders"];
       sortKey = [@"name" copy];
-      errors = [NSMutableArray new];
-      iconCache = [NSMutableDictionary new];
-      thumbnailCache = [NSCache new];
+      errors = [[NSMutableArray alloc] init];
+      iconCache = [[NSMutableDictionary alloc] init];
+      thumbnailCache = [[NSCache alloc] init];
       [thumbnailCache setCountLimit:256];
-      thumbnailRequests = [NSMutableSet new];
-      thumbnailQueue = [NSOperationQueue new];
+      thumbnailRequests = [[NSMutableSet alloc] init];
+      thumbnailQueue = [[NSOperationQueue alloc] init];
       [thumbnailQueue setMaxConcurrentOperationCount:2];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (thumbnailPreferencesChanged:)
@@ -813,7 +813,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
           selector:@selector (filenameTooltipsChanged:) name:@"FVFilenameTooltipsChanged" object:nil];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (locationPreferencesChanged:) name:@"FVLocationPreferencesChanged" object:nil];
-      browserRows = [NSMutableDictionary new];
+      browserRows = [[NSMutableDictionary alloc] init];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (hiddenFilesPreferencesChanged:) name:@"FVHiddenFilesChanged" object:nil];
@@ -955,7 +955,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   NSArray *images = [NSArray arrayWithObjects:@"Desktop", @"DocsFolder", @"DownloadFolder",
                                               @"ImageFolder", @"MusicFolder", @"VideoFolder", nil];
   if (!placeIcons)
-    placeIcons = [NSMutableDictionary new];
+    placeIcons = [[NSMutableDictionary alloc] init];
   [placeIcons removeAllObjects];
   [placeIcons setObject:@"HomeDirectory" forKey:NSHomeDirectory ()];
   [placeIcons setObject:@"Root_PC" forKey:@"/"];
@@ -2327,7 +2327,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 
 - (void)loadBrowserFolder:(NSDictionary *)request
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   NSError *error = nil;
   NSString *folder = [request objectForKey:@"path"];
   NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:folder error:&error];
@@ -2495,7 +2495,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 
 - (void)readDirectoryStamp:(NSDictionary *)request
 {
-  NSAutoreleasePool *pool = [NSAutoreleasePool new];
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   NSMutableDictionary *stamp = [NSMutableDictionary dictionaryWithDictionary:request];
   NSArray *folders = [request objectForKey:@"folders"];
   NSMutableDictionary *snapshots = [NSMutableDictionary dictionary];
