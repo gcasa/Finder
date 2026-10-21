@@ -29,6 +29,7 @@
   NSButton *filenameTooltipCheckbox;
   NSButton *excludeRunCheckbox;
   NSButton *hiddenFilesCheckbox;
+  NSColorWell *backgroundColorWell;
 }
 
 - (BOOL)openFile:(NSString *)path withApplication:(NSString *)application

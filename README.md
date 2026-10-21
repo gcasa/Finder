@@ -86,6 +86,9 @@ Inspected development environment:
 - List view has name/icons, byte size, kind, modification time, permissions and
   full path. Click headers to sort or reverse sorting. Folders First is optional.
   Arrow keys navigate, typing selects by prefix, Return/double-click opens.
+- File backgrounds default to black in list, icon, and column views. Preferences →
+  File viewer background lets you choose a persistent color for all open windows;
+  filename text adjusts automatically for contrast.
 - Preferences → Show hidden files and directories reveals dot-prefixed files
   and folders in list, column and icon views. It is off by default, remembers
   your choice, and updates all open windows immediately. The View → Show Hidden
@@ -238,6 +241,7 @@ sh Tests/launch.sh
 sh Tests/thumbnails.sh
 sh Tests/recents.sh
 sh Tests/filenames.sh
+sh Tests/appearance.sh
 ```
 
 `Tests/run.sh` builds Foundation-only tests and creates all destructive fixtures

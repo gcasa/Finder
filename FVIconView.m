@@ -80,7 +80,7 @@
   [style setLineBreakMode:selected ? NSLineBreakByWordWrapping : NSLineBreakByTruncatingMiddle];
   return [NSDictionary dictionaryWithObjectsAndKeys:
       [NSFont systemFontOfSize:[NSFont systemFontSize]], NSFontAttributeName,
-      selected ? [NSColor selectedControlTextColor] : [NSColor controlTextColor],
+      selected ? [NSColor selectedControlTextColor] : FVViewerTextColor (),
       NSForegroundColorAttributeName, style, NSParagraphStyleAttributeName, nil];
 }
 
@@ -163,7 +163,7 @@
 
 - (void)drawRect:(NSRect)dirty
 {
-  [[NSColor controlBackgroundColor] set];
+  [FVViewerBackgroundColor () set];
   NSRectFill (dirty);
   NSArray *items = [owner items];
   NSUInteger i;

@@ -20,6 +20,9 @@
 #import <AppKit/AppKit.h>
 #import "FVModel.h"
 
+NSColor *FVViewerBackgroundColor (void);
+NSColor *FVViewerTextColor (void);
+
 @class FVOperations, FVIconView;
 @interface FVWindow : NSWindowController
 {

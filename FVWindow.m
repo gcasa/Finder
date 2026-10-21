@@ -26,6 +26,59 @@
 #include <sys/statvfs.h>
 #include <sys/stat.h>
 
+NSColor *
+FVViewerBackgroundColor (void)
+{
+  NSArray *rgb = [[NSUserDefaults standardUserDefaults] arrayForKey:@"ViewerBackgroundColor"];
+  if ([rgb count] != 3)
+    return [NSColor blackColor];
+  NSUInteger i;
+  for (i = 0; i < 3; i++)
+    if (![[rgb objectAtIndex:i] isKindOfClass:[NSNumber class]]
+        || !isfinite ([[rgb objectAtIndex:i] doubleValue])
+        || [[rgb objectAtIndex:i] doubleValue] < 0
+        || [[rgb objectAtIndex:i] doubleValue] > 1)
+      return [NSColor blackColor];
+  return [NSColor colorWithCalibratedRed:[[rgb objectAtIndex:0] doubleValue]
+      green:[[rgb objectAtIndex:1] doubleValue] blue:[[rgb objectAtIndex:2] doubleValue] alpha:1];
+}
+
+NSColor *
+FVViewerTextColor (void)
+{
+  NSColor *color = [FVViewerBackgroundColor () colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
+  CGFloat brightness = .299 * [color redComponent] + .587 * [color greenComponent]
+                       + .114 * [color blueComponent];
+  return brightness < .5 ? [NSColor whiteColor] : [NSColor blackColor];
+}
+
+/* GNUstep's NSBrowser background setter is a stub; its matrices use this getter. */
+@interface FVBrowser : NSBrowser
+
+@end
+
+@implementation FVBrowser
+
+- (void)tile
+{
+  [super tile];
+  NSEnumerator *views = [[self subviews] objectEnumerator];
+  NSView *view;
+  while ((view = [views nextObject]))
+    if ([view isKindOfClass:[NSScrollView class]])
+      {
+        [(NSScrollView *)view setBackgroundColor:FVViewerBackgroundColor ()];
+        [[(NSScrollView *)view contentView] setBackgroundColor:FVViewerBackgroundColor ()];
+      }
+}
+
+- (NSColor *)backgroundColor
+{
+  return FVViewerBackgroundColor ();
+}
+
+@end
+
 @class FVDialog;
 @interface FVWindow (Activity)
 
@@ -721,6 +774,16 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 
 @implementation FVMediaBrowserCell
 
+- (NSAttributedString *)attributedStringValue
+{
+  NSMutableAttributedString *text = [[[super attributedStringValue] mutableCopy] autorelease];
+  [text addAttribute:NSForegroundColorAttributeName
+      value:([self isHighlighted] || [self state]) ? [NSColor selectedControlTextColor]
+                                                 : FVViewerTextColor ()
+      range:NSMakeRange (0, [text length])];
+  return text;
+}
+
 - (void)setOwner:(FVWindow *)controller
 {
   owner = controller;
@@ -926,6 +989,10 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [[activityStatus cell] setLineBreakMode:NSLineBreakByTruncatingTail];
       [content addSubview:activityStatus];
       [table registerForDraggedTypes:[NSArray arrayWithObject:NSFilenamesPboardType]];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (appearancePreferencesChanged:) name:@"FVAppearancePreferencesChanged"
+          object:nil];
+      [self appearancePreferencesChanged:nil];
       [self rebuildPlaces];
       [self navigate:value];
       NSInteger savedMode = [[NSUserDefaults standardUserDefaults] integerForKey:@"ViewMode"];
@@ -940,6 +1007,31 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
                                                  repeats:YES] retain];
     }
   return self;
+}
+
+- (void)appearancePreferencesChanged:(NSNotification *)notification
+{
+  NSColor *color = FVViewerBackgroundColor ();
+  [scroll setBackgroundColor:color];
+  [[scroll contentView] setBackgroundColor:color];
+  [table setBackgroundColor:color];
+  NSEnumerator *columns = [[table tableColumns] objectEnumerator];
+  NSTableColumn *column;
+  while ((column = [columns nextObject]))
+    [(NSTextFieldCell *)[column dataCell] setTextColor:FVViewerTextColor ()];
+  [table setNeedsDisplay:YES];
+  [icons setNeedsDisplay:YES];
+  NSInteger i;
+  for (i = 0; browser && i <= [browser lastColumn]; i++)
+    {
+      NSMatrix *matrix = [browser matrixInColumn:i];
+      [matrix setBackgroundColor:color];
+      [[matrix enclosingScrollView] setBackgroundColor:color];
+      [[[matrix enclosingScrollView] contentView] setBackgroundColor:color];
+      [matrix setNeedsDisplay:YES];
+    }
+  [browser tile];
+  [browser setNeedsDisplay:YES];
 }
 
 - (void)locationPreferencesChanged:(NSNotification *)notification
@@ -2258,7 +2350,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
     }
   if (!browser)
     {
-      browser = [[NSBrowser alloc] initWithFrame:[host bounds]];
+      browser = [[FVBrowser alloc] initWithFrame:[host bounds]];
       [browser setCellClass:[FVMediaBrowserCell class]];
       [browser setMatrixClass:[FVBrowserMatrix class]];
       [browser setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
@@ -2291,6 +2383,9 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
     createRowsForColumn:(NSInteger)column
                inMatrix:(NSMatrix *)matrix
 {
+  [matrix setBackgroundColor:FVViewerBackgroundColor ()];
+  [[matrix enclosingScrollView] setBackgroundColor:FVViewerBackgroundColor ()];
+  [[[matrix enclosingScrollView] contentView] setBackgroundColor:FVViewerBackgroundColor ()];
   NSString *folder = [self browserFolder:column];
   if (!folder)
     return;
