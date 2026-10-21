@@ -1,8 +1,11 @@
 # FileViewer
 
 FileViewer is a native GNUstep file manager, built with Foundation and AppKit.
-It runs alongside GWorkspace; it does not replace the workspace manager, register
-file associations, install services, or change global GNUstep configuration.
+It can run alongside GWorkspace or handle directory-opening requests when selected
+as the GNUstep workspace application (`GSWorkspaceApplication = FileViewer`).
+In that configuration, `gopen .` opens the directory in FileViewer. Explicit
+application choices and file opening continue through NSWorkspace associations.
+FileViewer does not change global GNUstep configuration on startup.
 
 ## Build and launch
 

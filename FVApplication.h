@@ -31,6 +31,8 @@
   NSButton *hiddenFilesCheckbox;
 }
 
+- (BOOL)openFile:(NSString *)path withApplication:(NSString *)application
+    andDeactivate:(BOOL)flag;
 - (void)newWindow:(id)sender;
 - (void)openPath:(NSString *)path;
 - (void)preferences:(id)sender;

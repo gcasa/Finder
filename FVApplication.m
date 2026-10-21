@@ -125,6 +125,26 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   return YES;
 }
 
+/* GNUstep sends workspace requests to the application delegate over DO. */
+- (BOOL)openFile:(NSString *)path withApplication:(NSString *)application
+    andDeactivate:(BOOL)flag
+{
+  BOOL directory = NO;
+  if (![[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&directory])
+    return NO;
+  if (application == nil && directory
+      && ![[NSWorkspace sharedWorkspace] isFilePackageAtPath:path])
+    {
+      BOOL opened = [self application:NSApp openFile:path];
+      if (opened && flag)
+        [NSApp activateIgnoringOtherApps:YES];
+      return opened;
+    }
+  /* NSWorkspace bypasses delegation inside the configured workspace itself. */
+  return [[NSWorkspace sharedWorkspace] openFile:path
+      withApplication:application andDeactivate:flag];
+}
+
 - (void)viewerClosed:(id)controller
 {
   [windows removeObjectIdenticalTo:controller];

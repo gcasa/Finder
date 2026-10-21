@@ -411,6 +411,20 @@ main (void)
   FVWindow *secondWindow = [[FVWindow alloc] initWithPath:root];
   CHECK ([MountedPaths (secondWindow) isEqual:filtered]);
   FVApplication *application = [[FVApplication alloc] init];
+  /* Workspace requests must be accepted before launch and queued as directories. */
+  CHECK ([application openFile:root withApplication:nil andDeactivate:NO]);
+  CHECK ([[application valueForKey:@"pendingPaths"] containsObject:root]);
+  CHECK (![application openFile:[root stringByAppendingPathComponent:@"missing-folder"]
+      withApplication:nil andDeactivate:NO]);
+  [application setValue:[NSMutableArray array] forKey:@"windows"];
+  [application setValue:[NSNumber numberWithBool:YES] forKey:@"launched"];
+  CHECK ([application openFile:root withApplication:nil andDeactivate:NO]);
+  NSArray *workspaceWindows = [application valueForKey:@"windows"];
+  CHECK ([workspaceWindows count] == 1);
+  FVWindow *workspaceWindow = [[workspaceWindows objectAtIndex:0] retain];
+  CHECK ([[workspaceWindow valueForKey:@"path"] isEqual:root]);
+  [[workspaceWindow window] close];
+  [workspaceWindow release];
   [application preferences:nil];
   NSButton *hiddenFiles = [application valueForKey:@"hiddenFilesCheckbox"];
   CHECK ([defaults objectForKey:@"Hidden"] == nil);
