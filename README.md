@@ -126,7 +126,9 @@ Inspected development environment:
   expands a column without adding history; double-clicking it navigates the
   window and adds history. Files are selected, not previewed; double-click opens
   them. Get Info is the explicit metadata view. Child columns load off-thread.
-- Icons support multiple selection, Shift ranges, toggle selection, keyboard
+- All file views support multiple selection: Control-click or Command-click
+  toggles individual items, Shift-click extends a range, and Edit → Select All
+  selects every item. Icons also support Shift-arrow range selection, keyboard
   navigation, double-click, and View → Larger/Smaller Icons. All views use the
   same operations and directory items; selections persist between list/icons.
 - Filter matches filenames in the current directory. View → Recursive Filename

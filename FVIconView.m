@@ -158,6 +158,7 @@
 {
   [selection removeAllIndexes];
   [selection addIndexes:indices];
+  anchor = focusedIndex = [selection count] ? [selection firstIndex] : 0;
   [self reload];
 }
 
@@ -241,7 +242,10 @@
   if (i < 0)
     [selection removeAllIndexes];
   else if ([event modifierFlags] & NSShiftKeyMask)
-    [selection addIndexesInRange:NSMakeRange (MIN (anchor, i), labs (anchor - i) + 1)];
+    {
+      anchor = MAX (0, MIN (anchor, (NSInteger)[[owner items] count] - 1));
+      [selection addIndexesInRange:NSMakeRange (MIN (anchor, i), labs (anchor - i) + 1)];
+    }
   else if ([event modifierFlags] & (NSCommandKeyMask | NSControlKeyMask))
     {
       if ([selection containsIndex:i])
@@ -256,6 +260,8 @@
       [selection addIndex:i];
       anchor = i;
     }
+  if (i >= 0)
+    focusedIndex = i;
   [self reload];
   [owner selectionChanged];
   if ([event clickCount] == 2 && i >= 0)
@@ -268,7 +274,7 @@
   if (![text length])
     return;
   unichar c = [text characterAtIndex:0];
-  NSInteger next = [selection count] ? [selection firstIndex] : 0;
+  NSInteger next = [selection count] ? focusedIndex : 0;
   if (c == NSRightArrowFunctionKey)
     next++;
   else if (c == NSLeftArrowFunctionKey)
@@ -299,10 +305,18 @@
   if (![[owner items] count])
     return;
   next = MAX (0, MIN (next, (NSInteger)[[owner items] count] - 1));
-  if (!([event modifierFlags] & NSShiftKeyMask))
-    [selection removeAllIndexes];
-  [selection addIndex:next];
-  anchor = next;
+  [selection removeAllIndexes];
+  if ([event modifierFlags] & NSShiftKeyMask)
+    {
+      anchor = MAX (0, MIN (anchor, (NSInteger)[[owner items] count] - 1));
+      [selection addIndexesInRange:NSMakeRange (MIN (anchor, next), labs (anchor - next) + 1)];
+    }
+  else
+    {
+      [selection addIndex:next];
+      anchor = next;
+    }
+  focusedIndex = next;
   [self reload];
   [self scrollRectToVisible:[self rectForIndex:next]];
   [self setNeedsDisplay:YES];

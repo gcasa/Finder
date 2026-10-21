@@ -26,6 +26,7 @@
   NSMutableIndexSet *selection;
   CGFloat tileSize;
   NSInteger anchor;
+  NSInteger focusedIndex;
   NSPoint mouseDownPoint;
   NSString *mouseDownPath;
   BOOL dragPending;

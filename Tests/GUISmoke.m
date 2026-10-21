@@ -191,6 +191,63 @@ MouseEvent (NSWindow *window, NSEventType type, NSPoint point)
 }
 
 static void
+SelectionClick (NSView *view, NSRect rect, NSUInteger modifiers)
+{
+  NSWindow *window = [view window];
+  NSPoint point = [view convertPoint:NSMakePoint (NSMinX (rect) + 20, NSMidY (rect)) toView:nil];
+  NSEvent *down = [NSEvent mouseEventWithType:NSLeftMouseDown location:point
+      modifierFlags:modifiers timestamp:[NSDate timeIntervalSinceReferenceDate]
+      windowNumber:[window windowNumber] context:nil eventNumber:0 clickCount:1 pressure:1];
+  if (![view isKindOfClass:[FVIconView class]])
+    [NSApp postEvent:MouseEvent (window, NSLeftMouseUp, point) atStart:YES];
+  [view mouseDown:down];
+  if ([view isKindOfClass:[FVIconView class]])
+    [view mouseUp:MouseEvent (window, NSLeftMouseUp, point)];
+}
+
+static void
+CheckMultipleSelection (FVWindow *controller)
+{
+  Action (controller, @"listMode:");
+  NSTableView *table = [controller valueForKey:@"table"];
+  SelectionClick (table, [table rectOfRow:0], 0);
+  SelectionClick (table, [table rectOfRow:1], NSCommandKeyMask);
+  CHECK ([[controller selectedPaths] count] == 2);
+  SelectionClick (table, [table rectOfRow:1], NSControlKeyMask);
+  CHECK ([[controller selectedPaths] count] == 1);
+  SelectionClick (table, [table rectOfRow:1], NSShiftKeyMask);
+  CHECK ([[controller selectedPaths] count] == 2);
+
+  Action (controller, @"columnMode:");
+  NSBrowser *browser = [controller valueForKey:@"browser"];
+  NSMatrix *matrix = [browser matrixInColumn:0];
+  SelectionClick (matrix, [matrix cellFrameAtRow:0 column:0], 0);
+  SelectionClick (matrix, [matrix cellFrameAtRow:1 column:0], NSControlKeyMask);
+  CHECK ([[controller selectedPaths] count] == 2);
+  SelectionClick (matrix, [matrix cellFrameAtRow:1 column:0], NSCommandKeyMask);
+  CHECK ([[controller selectedPaths] count] == 1);
+  SelectionClick (matrix, [matrix cellFrameAtRow:0 column:0], 0);
+  SelectionClick (matrix, [matrix cellFrameAtRow:1 column:0], NSShiftKeyMask);
+  CHECK ([[controller selectedPaths] count] == 2);
+
+  Action (controller, @"iconMode:");
+  FVIconView *icons = [controller valueForKey:@"icons"];
+  [icons setSelection:[NSIndexSet indexSetWithIndex:0]];
+  unichar arrows[] = { NSRightArrowFunctionKey, NSLeftArrowFunctionKey };
+  NSUInteger i;
+  for (i = 0; i < 2; i++)
+    {
+      NSString *characters = [NSString stringWithCharacters:&arrows[i] length:1];
+      NSEvent *event = [NSEvent keyEventWithType:NSKeyDown location:NSZeroPoint
+          modifierFlags:NSShiftKeyMask timestamp:0 windowNumber:[[icons window] windowNumber]
+          context:nil characters:characters charactersIgnoringModifiers:characters
+          isARepeat:NO keyCode:0];
+      [icons keyDown:event];
+      CHECK ([[controller selectedPaths] count] == (i == 0 ? 2 : 1));
+    }
+}
+
+static void
 CheckClickJitter (FVWindow *controller)
 {
   NSWindow *window = [[NSWindow alloc] initWithContentRect:NSMakeRect (0, 0, 300, 200)
@@ -355,6 +412,7 @@ main (void)
   CHECK ([[window valueForKey:@"scroll"] documentView] == icons);
   CHECK ([[window selectedPaths] count] == 1);
   CheckClickJitter (window);
+  CheckMultipleSelection (window);
   [icons selectAll:nil];
   CHECK ([[window selectedPaths] count] == 2);
   Action (window, @"listMode:");

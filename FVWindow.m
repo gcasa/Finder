@@ -558,6 +558,17 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 
 @end
 
+/* Keep file-selection gestures consistent despite the native table and
+   matrix controls using different modifier conventions. */
+static NSEvent *
+FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
+{
+  return [NSEvent mouseEventWithType:[event type] location:[event locationInWindow]
+      modifierFlags:modifiers timestamp:[event timestamp] windowNumber:[event windowNumber]
+      context:[event context] eventNumber:[event eventNumber]
+      clickCount:[event clickCount] pressure:[event pressure]];
+}
+
 @interface FVTableView : NSTableView
 {
   NSMutableString *typed;
@@ -574,6 +585,12 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 {
   NSInteger row = [self rowAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
   NSUInteger modifiers = [event modifierFlags];
+  if (modifiers & NSShiftKeyMask)
+    event = FVSelectionEvent (event,
+        (modifiers & ~(NSShiftKeyMask | NSCommandKeyMask)) | NSControlKeyMask);
+  else if (modifiers & (NSCommandKeyMask | NSControlKeyMask))
+    event = FVSelectionEvent (event,
+        (modifiers & ~(NSCommandKeyMask | NSControlKeyMask)) | NSShiftKeyMask);
   /* GNUstep only initiates drags for rows selected before mouseDown. */
   if (row >= 0 && ![self isRowSelected:row]
       && !(modifiers & (NSShiftKeyMask | NSControlKeyMask | NSCommandKeyMask)))
@@ -723,6 +740,15 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
     }
   if ([next type] != NSLeftMouseDragged)
     {
+      NSUInteger modifiers = [event modifierFlags];
+      if (modifiers & NSShiftKeyMask)
+        event = FVSelectionEvent (event,
+            (modifiers & ~(NSShiftKeyMask | NSControlKeyMask | NSCommandKeyMask))
+                | NSAlternateKeyMask);
+      else if (modifiers & (NSControlKeyMask | NSCommandKeyMask))
+        event = FVSelectionEvent (event,
+            (modifiers & ~(NSControlKeyMask | NSCommandKeyMask | NSAlternateKeyMask))
+                | NSShiftKeyMask);
       [super mouseDown:event];
       return;
     }
