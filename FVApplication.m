@@ -151,29 +151,37 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   if (!preferencesPanel)
     {
       preferencesPanel = [[NSPanel alloc]
-          initWithContentRect:NSMakeRect (0, 0, 430, 210)
+          initWithContentRect:NSMakeRect (0, 0, 430, 250)
                     styleMask:NSTitledWindowMask | NSClosableWindowMask
                       backing:NSBackingStoreBuffered defer:NO];
       [preferencesPanel setTitle:@"Preferences"];
       [preferencesPanel setReleasedWhenClosed:NO];
-      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 156, 390, 28)];
+      thumbnailCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 196, 390, 28)];
       [thumbnailCheckbox setButtonType:NSSwitchButton];
       [thumbnailCheckbox setTitle:@"Show thumbnails"];
       [thumbnailCheckbox setTarget:self];
       [thumbnailCheckbox setAction:@selector (toggleThumbnails:)];
       [[preferencesPanel contentView] addSubview:thumbnailCheckbox];
-      filenameTooltipCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 116, 390, 28)];
+      filenameTooltipCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 156, 390, 28)];
       [filenameTooltipCheckbox setButtonType:NSSwitchButton];
       [filenameTooltipCheckbox setTitle:@"Show full filenames on hover"];
       [filenameTooltipCheckbox setTarget:self];
       [filenameTooltipCheckbox setAction:@selector (toggleFilenameTooltips:)];
       [[preferencesPanel contentView] addSubview:filenameTooltipCheckbox];
-      excludeRunCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      excludeRunCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 116, 390, 28)];
       [excludeRunCheckbox setButtonType:NSSwitchButton];
       [excludeRunCheckbox setTitle:@"Exclude filesystems mounted under /run"];
       [excludeRunCheckbox setTarget:self];
       [excludeRunCheckbox setAction:@selector (toggleRunFilesystems:)];
       [[preferencesPanel contentView] addSubview:excludeRunCheckbox];
+      hiddenFilesCheckbox = [[NSButton alloc] initWithFrame:NSMakeRect (20, 76, 390, 28)];
+      [hiddenFilesCheckbox setButtonType:NSSwitchButton];
+      [hiddenFilesCheckbox setTitle:@"Show hidden files and directories"];
+      [hiddenFilesCheckbox setTarget:self];
+      [hiddenFilesCheckbox setAction:@selector (toggleHiddenFiles:)];
+      [[preferencesPanel contentView] addSubview:hiddenFilesCheckbox];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (hiddenFilesPreferencesChanged:) name:@"FVHiddenFilesChanged" object:nil];
       NSTextField *label = [[[NSTextField alloc]
           initWithFrame:NSMakeRect (24, 20, 380, 45)] autorelease];
       [label setStringValue:@"Changes apply to all open windows."];
@@ -188,6 +196,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   [thumbnailCheckbox setState:[FVThumbnailOperation enabled] ? NSOnState : NSOffState];
   [filenameTooltipCheckbox setState:FVFilenameTooltipsEnabled () ? NSOnState : NSOffState];
   [excludeRunCheckbox setState:FVExcludeRunFilesystems () ? NSOnState : NSOffState];
+  [self hiddenFilesPreferencesChanged:nil];
   [preferencesPanel makeKeyAndOrderFront:self];
 }
 
@@ -215,8 +224,22 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
                                                     object:self];
 }
 
+- (void)toggleHiddenFiles:(id)sender
+{
+  [[NSUserDefaults standardUserDefaults] setBool:[sender state] == NSOnState forKey:@"Hidden"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVHiddenFilesChanged" object:self];
+}
+
+- (void)hiddenFilesPreferencesChanged:(NSNotification *)notification
+{
+  [hiddenFilesCheckbox setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"]
+      ? NSOnState : NSOffState];
+}
+
 - (void)dealloc
 {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [hiddenFilesCheckbox release];
   [excludeRunCheckbox release];
   [thumbnailCheckbox release];
   [filenameTooltipCheckbox release];

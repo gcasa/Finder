@@ -119,6 +119,15 @@ Tick (double seconds)
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];
 }
 
+static void
+WaitForListing (FVWindow *window)
+{
+  NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:5];
+  while ([[window valueForKey:@"loading"] boolValue] && [deadline timeIntervalSinceNow] > 0)
+    Tick (.02);
+  CHECK (![[window valueForKey:@"loading"] boolValue]);
+}
+
 static NSMenu *
 MenuAtPoint (NSOutlineView *outline, NSPoint point)
 {
@@ -180,6 +189,7 @@ main (void)
   [NSApp finishLaunching];
   /* Volatile arguments isolate these settings from the user's preferences. */
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  [defaults removeObjectForKey:@"Hidden"];
   [defaults setVolatileDomain:[NSDictionary dictionaryWithObjectsAndKeys:
       [NSArray array], @"Favorites", @"0", @"ViewMode", nil] forName:NSArgumentDomain];
   char fixture[] = "/tmp/fileviewer-locations-XXXXXX";
@@ -402,6 +412,52 @@ main (void)
   CHECK ([MountedPaths (secondWindow) isEqual:filtered]);
   FVApplication *application = [FVApplication new];
   [application preferences:nil];
+  NSButton *hiddenFiles = [application valueForKey:@"hiddenFilesCheckbox"];
+  CHECK ([defaults objectForKey:@"Hidden"] == nil);
+  CHECK ([hiddenFiles state] == NSOffState);
+  NSString *hiddenFile = [root stringByAppendingPathComponent:@".hidden-file"];
+  NSString *hiddenFolder = [root stringByAppendingPathComponent:@".hidden-folder"];
+  CHECK ([@"hidden" writeToFile:hiddenFile atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
+  CHECK ([fm createDirectoryAtPath:hiddenFolder withIntermediateDirectories:NO attributes:nil error:NULL]);
+  [window navigate:root];
+  [window performSelector:@selector (listMode:) withObject:nil];
+  [secondWindow performSelector:@selector (iconMode:) withObject:nil];
+  WaitForListing (window);
+  WaitForListing (secondWindow);
+  CHECK (![[[window items] valueForKey:@"name"] containsObject:@".hidden-file"]);
+  CHECK (![[[secondWindow items] valueForKey:@"name"] containsObject:@".hidden-folder"]);
+  [hiddenFiles performClick:nil];
+  WaitForListing (window);
+  WaitForListing (secondWindow);
+  CHECK ([[defaults objectForKey:@"Hidden"] boolValue]);
+  CHECK ([[[window items] valueForKey:@"name"] containsObject:@".hidden-file"]);
+  CHECK ([[[window items] valueForKey:@"name"] containsObject:@".hidden-folder"]);
+  CHECK ([[[secondWindow items] valueForKey:@"name"] containsObject:@".hidden-file"]);
+  FVWindow *columnsWindow = [[FVWindow alloc] initWithPath:root];
+  [columnsWindow performSelector:@selector (columnMode:) withObject:nil];
+  WaitForListing (columnsWindow);
+  Tick (.3);
+  NSBrowser *hiddenBrowser = [columnsWindow valueForKey:@"browser"];
+  NSArray *columnPaths = [[[hiddenBrowser matrixInColumn:0] cells] valueForKey:@"representedObject"];
+  CHECK ([columnPaths containsObject:hiddenFile]);
+  CHECK ([columnPaths containsObject:hiddenFolder]);
+  [[application valueForKey:@"preferencesPanel"] orderOut:nil];
+  [application preferences:nil];
+  CHECK ([hiddenFiles state] == NSOnState);
+  /* Menu and Preferences use the same setting, including an already-open panel. */
+  [window performSelector:@selector (toggleHidden:) withObject:nil];
+  WaitForListing (window);
+  WaitForListing (secondWindow);
+  WaitForListing (columnsWindow);
+  Tick (.3);
+  CHECK ([hiddenFiles state] == NSOffState);
+  CHECK (![[[window items] valueForKey:@"name"] containsObject:@".hidden-file"]);
+  CHECK (![[[secondWindow items] valueForKey:@"name"] containsObject:@".hidden-folder"]);
+  columnPaths = [[[hiddenBrowser matrixInColumn:0] cells] valueForKey:@"representedObject"];
+  CHECK (![columnPaths containsObject:hiddenFile]);
+  CHECK (![columnPaths containsObject:hiddenFolder]);
+  [[columnsWindow window] close];
+  [columnsWindow release];
   NSButton *excludeRun = [application valueForKey:@"excludeRunCheckbox"];
   CHECK ([excludeRun state] == NSOnState);
   [excludeRun performClick:nil];
@@ -510,6 +566,7 @@ main (void)
   [window release];
   [drag release];
   [defaults removeObjectForKey:@"Favorites"];
+  [defaults removeObjectForKey:@"Hidden"];
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u locations and launch assertions", checks);
   [pool drain];

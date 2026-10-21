@@ -815,6 +815,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
           selector:@selector (locationPreferencesChanged:) name:@"FVLocationPreferencesChanged" object:nil];
       browserRows = [NSMutableDictionary new];
       hidden = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
+      [[NSNotificationCenter defaultCenter] addObserver:self
+          selector:@selector (hiddenFilesPreferencesChanged:) name:@"FVHiddenFilesChanged" object:nil];
       NSView *content = [window contentView];
       /* Autosave restoration may have changed the content size already. */
       NSSize contentSize = [content bounds].size;
@@ -1527,9 +1529,18 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 
 - (void)toggleHidden:(id)sender
 {
-  hidden = !hidden;
-  [[NSUserDefaults standardUserDefaults] setBool:hidden forKey:@"Hidden"];
-  [self refresh:nil];
+  [[NSUserDefaults standardUserDefaults] setBool:!hidden forKey:@"Hidden"];
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"FVHiddenFilesChanged" object:self];
+}
+
+- (void)hiddenFilesPreferencesChanged:(NSNotification *)notification
+{
+  BOOL show = [[NSUserDefaults standardUserDefaults] boolForKey:@"Hidden"];
+  if (hidden != show)
+    {
+      hidden = show;
+      [self refresh:nil];
+    }
 }
 
 - (void)windowWillClose:(NSNotification *)note

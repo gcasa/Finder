@@ -28,6 +28,7 @@
   NSButton *thumbnailCheckbox;
   NSButton *filenameTooltipCheckbox;
   NSButton *excludeRunCheckbox;
+  NSButton *hiddenFilesCheckbox;
 }
 
 - (void)newWindow:(id)sender;
