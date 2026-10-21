@@ -684,8 +684,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   if (![paths count])
     return;
   NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSDragPboard];
-  if (!FVWriteFileDragPasteboard (pb, paths))
-    return;
+  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
+  [pb setPropertyList:paths forType:NSFilenamesPboardType];
   next = [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask];
   NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile:[paths objectAtIndex:0]];
   [self dragImage:image
@@ -2145,7 +2145,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [paths addObject:[[items objectAtIndex:i] path]];
       i = [indices indexGreaterThanIndex:i];
     }
-  return FVWriteFileDragPasteboard (pb, paths);
+  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
+  return [pb setPropertyList:paths forType:NSFilenamesPboardType];
 }
 
 - (BOOL)allowsFileDrop
@@ -2392,7 +2393,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
         [paths addObject:p];
       i = [indices indexGreaterThanIndex:i];
     }
-  return FVWriteFileDragPasteboard (pb, paths);
+  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
+  return [pb setPropertyList:paths forType:NSFilenamesPboardType];
 }
 
 - (NSDragOperation)browser:(NSBrowser *)sender

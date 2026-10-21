@@ -21,21 +21,6 @@
 #import "FVWindow.h"
 #import "FVModel.h"
 
-BOOL
-FVWriteFileDragPasteboard (NSPasteboard *pasteboard, NSArray *paths)
-{
-  NSMutableArray *urls = [NSMutableArray array];
-  NSUInteger i;
-  for (i = 0; i < [paths count]; i++)
-    [urls addObject:[[NSURL fileURLWithPath:[paths objectAtIndex:i]] absoluteString]];
-  [pasteboard declareTypes:[NSArray arrayWithObjects:NSFilenamesPboardType,
-      @"text/uri-list", nil] owner:nil];
-  BOOL native = [pasteboard setPropertyList:paths forType:NSFilenamesPboardType];
-  NSString *uris = [[urls componentsJoinedByString:@"\r\n"] stringByAppendingString:@"\r\n"];
-  BOOL standard = [pasteboard setString:uris forType:@"text/uri-list"];
-  return native && standard;
-}
-
 @implementation FVIconView
 - (id)initWithOwner:(FVWindow *)controller
 {
@@ -341,8 +326,8 @@ FVWriteFileDragPasteboard (NSPasteboard *pasteboard, NSArray *paths)
   if (![paths count])
     return;
   NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSDragPboard];
-  if (!FVWriteFileDragPasteboard (pb, paths))
-    return;
+  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
+  [pb setPropertyList:paths forType:NSFilenamesPboardType];
   [self dragImage:[owner iconForPath:[paths objectAtIndex:0]]
                at:[self convertPoint:[event locationInWindow] fromView:nil]
            offset:NSZeroSize
