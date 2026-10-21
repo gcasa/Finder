@@ -19,6 +19,8 @@
 
 #import <AppKit/AppKit.h>
 
+BOOL FVWriteFileDragPasteboard (NSPasteboard *pasteboard, NSArray *paths);
+
 @class FVWindow;
 @interface FVIconView : NSView
 {

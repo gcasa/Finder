@@ -21,6 +21,7 @@
 #import "FVWindow.h"
 #import "FVIconView.h"
 #include <unistd.h>
+#include <objc/runtime.h>
 
 static unsigned checks = 0;
 static FVWindow *dialogOwner;
@@ -148,6 +149,19 @@ static unsigned dragStarts;
   dragStarts++;                                                                                    \
 }
 
+@interface FVTableView : NSTableView
+
+@end
+
+@interface FVTableDragProbe : FVTableView
+
+@end
+
+@implementation FVTableDragProbe
+DRAG_PROBE
+
+@end
+
 @interface FVBrowserDragProbe : FVBrowserMatrix
 
 @end
@@ -222,6 +236,29 @@ CheckClickJitter (FVWindow *controller)
   [icons removeFromSuperview];
   [icons release];
   [window release];
+
+  /* Drag a previously unselected list row downward, without a selection click. */
+  Action (controller, @"listMode:");
+  NSTableView *table = [controller valueForKey:@"table"];
+  Class originalClass = object_getClass (table);
+  object_setClass (table, [FVTableDragProbe class]);
+  [table deselectAll:nil];
+  CHECK ([[table selectedRowIndexes] count] == 0);
+  NSRect row = [table rectOfRow:0];
+  origin = [table convertPoint:NSMakePoint (NSMinX (row) + 30, NSMidY (row)) toView:nil];
+  drag = NSMakePoint (origin.x, origin.y - 12);
+  window = [table window];
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseDragged, drag) atStart:NO];
+  [NSApp postEvent:MouseEvent (window, NSLeftMouseUp, drag) atStart:NO];
+  [table mouseDown:MouseEvent (window, NSLeftMouseDown, origin)];
+  CHECK (dragStarts == 3);
+  CHECK ([table isRowSelected:0]);
+  CHECK ([[[NSPasteboard pasteboardWithName:NSDragPboard] propertyListForType:NSFilenamesPboardType]
+      isEqual:[NSArray arrayWithObject:[[[controller items] objectAtIndex:0] path]]]);
+  object_setClass (table, originalClass);
+  [NSApp nextEventMatchingMask:NSLeftMouseUpMask untilDate:[NSDate date]
+                       inMode:NSDefaultRunLoopMode dequeue:YES];
+  Action (controller, @"iconMode:");
 }
 
 static FVItem *

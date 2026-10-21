@@ -511,6 +511,17 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVTableView
+- (void)mouseDown:(NSEvent *)event
+{
+  NSInteger row = [self rowAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
+  NSUInteger modifiers = [event modifierFlags];
+  /* GNUstep only initiates drags for rows selected before mouseDown. */
+  if (row >= 0 && ![self isRowSelected:row]
+      && !(modifiers & (NSShiftKeyMask | NSControlKeyMask | NSCommandKeyMask)))
+    [self selectRowIndexes:[NSIndexSet indexSetWithIndex:row] byExtendingSelection:NO];
+  [super mouseDown:event];
+}
+
 - (void)updateFileTooltips
 {
   [self removeAllToolTips];
@@ -673,8 +684,8 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   if (![paths count])
     return;
   NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSDragPboard];
-  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
-  [pb setPropertyList:paths forType:NSFilenamesPboardType];
+  if (!FVWriteFileDragPasteboard (pb, paths))
+    return;
   next = [[self window] nextEventMatchingMask:NSLeftMouseDraggedMask];
   NSImage *image = [[NSWorkspace sharedWorkspace] iconForFile:[paths objectAtIndex:0]];
   [self dragImage:image
@@ -2134,8 +2145,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
       [paths addObject:[[items objectAtIndex:i] path]];
       i = [indices indexGreaterThanIndex:i];
     }
-  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
-  return [pb setPropertyList:paths forType:NSFilenamesPboardType];
+  return FVWriteFileDragPasteboard (pb, paths);
 }
 
 - (BOOL)allowsFileDrop
@@ -2382,8 +2392,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
         [paths addObject:p];
       i = [indices indexGreaterThanIndex:i];
     }
-  [pb declareTypes:[NSArray arrayWithObject:NSFilenamesPboardType] owner:nil];
-  return [pb setPropertyList:paths forType:NSFilenamesPboardType];
+  return FVWriteFileDragPasteboard (pb, paths);
 }
 
 - (NSDragOperation)browser:(NSBrowser *)sender
