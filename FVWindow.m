@@ -29,16 +29,18 @@
 NSColor *
 FVViewerBackgroundColor (void)
 {
+  NSColor *defaultColor = [[NSColor windowBackgroundColor]
+      blendedColorWithFraction:.1 ofColor:[NSColor blackColor]];
   NSArray *rgb = [[NSUserDefaults standardUserDefaults] arrayForKey:@"ViewerBackgroundColor"];
   if ([rgb count] != 3)
-    return [NSColor blackColor];
+    return defaultColor;
   NSUInteger i;
   for (i = 0; i < 3; i++)
     if (![[rgb objectAtIndex:i] isKindOfClass:[NSNumber class]]
         || !isfinite ([[rgb objectAtIndex:i] doubleValue])
         || [[rgb objectAtIndex:i] doubleValue] < 0
         || [[rgb objectAtIndex:i] doubleValue] > 1)
-      return [NSColor blackColor];
+      return defaultColor;
   return [NSColor colorWithCalibratedRed:[[rgb objectAtIndex:0] doubleValue]
       green:[[rgb objectAtIndex:1] doubleValue] blue:[[rgb objectAtIndex:2] doubleValue] alpha:1];
 }

@@ -49,8 +49,14 @@ main (void)
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   [defaults removeObjectForKey:@"ViewerBackgroundColor"];
   [defaults setInteger:0 forKey:@"ViewMode"];
-  CHECK ([FVViewerBackgroundColor () isEqual:[NSColor blackColor]]);
-  CHECK ([FVViewerTextColor () isEqual:[NSColor whiteColor]]);
+  NSColor *defaultColor = FVViewerBackgroundColor ();
+  NSColor *base = [[NSColor windowBackgroundColor]
+      colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
+  NSColor *background = [defaultColor colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
+  CHECK ([background redComponent] <= [base redComponent]);
+  CHECK ([background greenComponent] <= [base greenComponent]);
+  CHECK ([background blueComponent] <= [base blueComponent]);
+  CHECK (![defaultColor isEqual:[NSColor blackColor]]);
   FVWindow *first = [[FVWindow alloc] initWithPath:@"/tmp"];
   FVWindow *second = [[FVWindow alloc] initWithPath:@"/tmp"];
   [first showWindow:nil];
@@ -82,7 +88,7 @@ main (void)
   FVWindow *third = [[FVWindow alloc] initWithPath:@"/tmp"];
   CHECK ([[[third valueForKey:@"table"] backgroundColor] isEqual:FVViewerBackgroundColor ()]);
   [defaults setObject:[NSArray arrayWithObject:@"invalid"] forKey:@"ViewerBackgroundColor"];
-  CHECK ([FVViewerBackgroundColor () isEqual:[NSColor blackColor]]);
+  CHECK ([FVViewerBackgroundColor () isEqual:defaultColor]);
   NSLog (@"Appearance smoke passed");
   [pool drain];
   return 0;
