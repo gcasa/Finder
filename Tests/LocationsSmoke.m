@@ -30,6 +30,7 @@ static unsigned checks;
   NSLog (@"FAIL line %d: %s", __LINE__, #condition); exit (1); } } while (0)
 
 @interface FVWindow (LocationsTesting)
+
 - (void)sidebarClicked:(id)sender;
 - (void)removeFavorite:(id)sender;
 - (NSString *)chooseApplicationForFile:(NSString *)path;
@@ -37,6 +38,7 @@ static unsigned checks;
 @end
 
 @protocol FVDialogTesting
+
 - (id)initWithApplications:(NSArray *)applications file:(NSString *)path;
 - (NSString *)selectedApplication;
 - (NSInteger)run;
@@ -49,6 +51,7 @@ static unsigned checks;
 @end
 
 @implementation FVChooseTest
+
 - (void)choose:(NSTimer *)timer
 {
   NSArray *views = [[[NSApp modalWindow] contentView] subviews];
@@ -86,6 +89,7 @@ static unsigned checks;
 @end
 
 @implementation FVTestDrag
+
 - (id)init
 {
   if ((self = [super init]))

@@ -22,6 +22,7 @@
 #import "FVModel.h"
 
 @interface FVWindow (RecentsTesting)
+
 - (void)sidebarClicked:(id)sender;
 - (void)launchFinished:(NSDictionary *)result;
 - (BOOL)validateMenuItem:(NSMenuItem *)item;

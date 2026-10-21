@@ -61,6 +61,7 @@ Exists (NSString *p)
 
 @end
 @implementation FVReceiver
+
 - (id)init
 {
   if ((self = [super init]))
@@ -108,6 +109,7 @@ Exists (NSString *p)
 
 @end
 @implementation FVCancelCopy
+
 - (BOOL)cancelled
 {
   calls++;
@@ -121,6 +123,7 @@ Exists (NSString *p)
 @end
 
 @implementation FVCrossDevice
+
 - (int)renameSource:(NSString *)source to:(NSString *)dest
 {
   errno = EXDEV;

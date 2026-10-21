@@ -85,6 +85,7 @@ CheckLayout (FVWindow *controller)
 @end
 
 @implementation FVDialogAnswer
+
 - (void)answer:(NSTimer *)timer
 {
   if (dialogOwner)

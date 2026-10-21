@@ -80,6 +80,7 @@ CheckColor (NSImage *image, BOOL red)
 }
 
 @interface FVThumbnailOperation (Testing)
+
 - (NSData *)renderWithTool:(NSString *)name arguments:(NSArray *)arguments output:(NSString *)output;
 
 @end
@@ -89,6 +90,7 @@ CheckColor (NSImage *image, BOOL red)
 @end
 
 @implementation FVFallbackThumbnail
+
 - (NSData *)renderWithTool:(NSString *)name arguments:(NSArray *)arguments output:(NSString *)output
 {
   if ([name isEqual:@"ffmpegthumbnailer"])
@@ -109,6 +111,7 @@ CheckColor (NSImage *image, BOOL red)
 @end
 
 @implementation FVThumbnailReceiver
+
 - (void)thumbnailLoaded:(NSDictionary *)value
 {
   result = [value copy];

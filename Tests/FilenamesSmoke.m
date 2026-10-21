@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 @interface FVIconView (FilenameTesting)
+
 - (NSRect)rectForIndex:(NSUInteger)index;
 - (NSInteger)indexAtPoint:(NSPoint)point;
 - (NSInteger)columns;
@@ -38,6 +39,7 @@
 @end
 
 @implementation FVFilenameWindow
+
 - (void)open:(id)sender
 {
   [openedPaths release];

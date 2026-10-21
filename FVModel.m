@@ -44,6 +44,7 @@ FVExcludeRunFilesystems (void)
 }
 
 @implementation FVMounts
+
 + (NSArray *)networkPaths
 {
   /* libmount merges kernel mounts with userspace mount options when available. */
@@ -100,6 +101,7 @@ FVExcludeRunFilesystems (void)
 @end
 
 @implementation FVRecentParser
+
 - (id)init
 {
   if ((self = [super init]))
@@ -158,6 +160,7 @@ FVExcludeRunFilesystems (void)
 @end
 
 @implementation FVRecents
+
 + (NSString *)sharedHistoryPath
 {
   NSString *root = [[[NSProcessInfo processInfo] environment] objectForKey:@"XDG_DATA_HOME"];
@@ -237,6 +240,7 @@ FVExcludeRunFilesystems (void)
 @end
 
 @implementation FVRecentItem
+
 + (id)itemWithRecord:(NSDictionary *)record
 {
   FVRecentItem *item = (FVRecentItem *)[self itemAtPath:[record objectForKey:@"path"]];
@@ -263,6 +267,7 @@ FVExcludeRunFilesystems (void)
 @end
 
 @implementation FVItem
+
 + (FVItem *)itemAtPath:(NSString *)value
 {
   FVItem *item = [[[self alloc] init] autorelease];
@@ -367,6 +372,7 @@ FVExcludeRunFilesystems (void)
 @end
 
 @implementation FVListing
+
 - (id)initWithPath:(NSString *)value
              query:(NSString *)filter
             hidden:(BOOL)show

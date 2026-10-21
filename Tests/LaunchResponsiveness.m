@@ -24,11 +24,13 @@
 #define CHECK(x) do { if (!(x)) { NSLog (@"FAIL line %d: %s", __LINE__, #x); exit (1); } } while (0)
 
 @interface FVSlowViewer : NSObject
+
 - (BOOL)application:(id)application openFile:(NSString *)path;
 
 @end
 
 @implementation FVSlowViewer
+
 - (BOOL)application:(id)application openFile:(NSString *)path
 {
   [NSThread sleepForTimeInterval:1];
@@ -52,6 +54,7 @@
 @end
 
 @implementation FVLaunchObserver
+
 - (void)completed:(NSDictionary *)result
 {
   done = YES;

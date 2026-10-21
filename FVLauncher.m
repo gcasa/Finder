@@ -20,6 +20,7 @@
 #import "FVLauncher.h"
 
 @interface FVLauncher (Private)
+
 + (BOOL)launchApplication:(NSString *)application file:(NSString *)path
                   binary:(NSString *)binary host:(NSString *)host;
 + (void)willLaunch:(NSDictionary *)info;
@@ -45,6 +46,7 @@
 @end
 
 @implementation FVLaunchRequest
+
 - (id)initWithApplication:(NSString *)app file:(NSString *)file
                   target:(id)receiver selector:(SEL)action
 {
@@ -93,6 +95,7 @@
 @end
 
 @implementation FVLauncher
+
 + (NSString *)defaultApplicationForFile:(NSString *)path
 {
   NSString *extension = [[path pathExtension] lowercaseString];

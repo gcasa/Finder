@@ -37,6 +37,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
 }
 
 @implementation FVApplication
+
 - (void)applicationDidFinishLaunching:(NSNotification *)note
 {
   windows = [NSMutableArray new];

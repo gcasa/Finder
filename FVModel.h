@@ -24,12 +24,14 @@ BOOL FVFilenameTooltipsEnabled (void);
 BOOL FVExcludeRunFilesystems (void);
 
 @interface FVMounts : NSObject
+
 + (NSArray *)networkPaths;
 + (NSArray *)networkPathsFromMountTable:(NSString *)filename;
 
 @end
 
 @interface FVRecents : NSObject
+
 + (void)recordPath:(NSString *)path;
 + (NSArray *)records;
 + (NSString *)sharedHistoryPath;

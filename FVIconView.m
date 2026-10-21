@@ -22,6 +22,7 @@
 #import "FVModel.h"
 
 @implementation FVIconView
+
 - (id)initWithOwner:(FVWindow *)controller
 {
   if ((self = [super initWithFrame:NSMakeRect (0, 0, 600, 400)]))

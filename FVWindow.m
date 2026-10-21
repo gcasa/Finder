@@ -28,6 +28,7 @@
 
 @class FVDialog;
 @interface FVWindow (Activity)
+
 - (NSInteger)runDialog:(FVDialog *)dialog;
 - (void)updateActivity;
 
@@ -255,6 +256,7 @@ FVCompare (id lhs, id rhs, void *context)
 @end
 
 @implementation FVDialog
+
 - (id)initWithApplications:(NSArray *)applications file:(NSString *)path
 {
   self = [self initWithTitle:@"Open With"
@@ -480,6 +482,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVSidebarView
+
 - (NSMenu *)menuForEvent:(NSEvent *)event
 {
   NSInteger row = [self rowAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
@@ -511,6 +514,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVTableView
+
 - (void)mouseDown:(NSEvent *)event
 {
   NSInteger row = [self rowAtPoint:[self convertPoint:[event locationInWindow] fromView:nil]];
@@ -602,11 +606,13 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
    file drag through writeRowsWithIndexes. Keep native matrix click handling
    and add only the missing drag initiation. */
 @interface FVBrowserMatrix : NSMatrix
+
 - (void)updateFileTooltips;
 
 @end
 
 @implementation FVBrowserMatrix
+
 - (void)updateFileTooltips
 {
   [self removeAllToolTips];
@@ -714,6 +720,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVMediaBrowserCell
+
 - (void)setOwner:(FVWindow *)controller
 {
   owner = controller;
@@ -739,6 +746,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVNameCell
+
 - (void)drawWithFrame:(NSRect)frame inView:(NSView *)view
 {
   NSImage *image = [self image];
@@ -765,6 +773,7 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 @end
 
 @implementation FVWindow
+
 - (id)initWithPath:(NSString *)value
 {
   NSWindow *window =

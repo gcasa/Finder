@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 @implementation FVThumbnailOperation
+
 + (BOOL)enabled
 {
   id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"ShowThumbnails"];

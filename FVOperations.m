@@ -352,6 +352,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
 }
 
 @implementation FVOperations
+
 - (id)initWithKind:(NSString *)action
            sources:(NSArray *)paths
        destination:(NSString *)folder
