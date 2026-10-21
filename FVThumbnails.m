@@ -46,7 +46,7 @@
     {
       path = [value copy];
       generation = token;
-      target = [receiver retain];
+      target = RETAIN (receiver);
     }
   return self;
 }
@@ -102,7 +102,7 @@
       kill ([task processIdentifier], SIGKILL);
       [task waitUntilExit];
     }
-  [task release];
+  RELEASE (task);
   /* Both tools output PNG. Reject empty or partial output before falling back. */
   const unsigned char signature[] = { 137, 80, 78, 71, 13, 10, 26, 10 };
   if ([data length] < 24 || memcmp ([data bytes], signature, sizeof (signature)) != 0)
@@ -112,7 +112,7 @@
 
 - (void)main
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   NSFileManager *fm = [NSFileManager defaultManager];
   NSString *temporary = nil;
   NSData *data = nil;
@@ -155,15 +155,15 @@
       [target performSelectorOnMainThread:@selector (thumbnailLoaded:)
                               withObject:result waitUntilDone:NO];
     }
-  [temporary release];
-  [pool drain];
+  RELEASE (temporary);
+  RELEASE (pool);
 }
 
 - (void)dealloc
 {
-  [path release];
-  [target release];
-  [super dealloc];
+  RELEASE (path);
+  RELEASE (target);
+  DEALLOC;
 }
 
 @end

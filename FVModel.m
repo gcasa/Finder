@@ -129,8 +129,8 @@ FVExcludeRunFilesystems (void)
       NSString *value = [attributes objectForKey:[keys objectAtIndex:i]];
       if (![value length])
         continue;
-      NSDateFormatter *formatter = [[[NSDateFormatter alloc] init] autorelease];
-      [formatter setLocale:[[[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"] autorelease]];
+      NSDateFormatter *formatter = AUTORELEASE ([[NSDateFormatter alloc] init]);
+      [formatter setLocale:AUTORELEASE ([[NSLocale alloc] initWithLocaleIdentifier:@"en_US_POSIX"])];
       [formatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXXXX"];
       NSDate *candidate = [formatter dateFromString:value];
       if (!candidate)
@@ -153,8 +153,8 @@ FVExcludeRunFilesystems (void)
 
 - (void)dealloc
 {
-  [records release];
-  [super dealloc];
+  RELEASE (records);
+  DEALLOC;
 }
 
 @end
@@ -199,8 +199,8 @@ FVExcludeRunFilesystems (void)
   NSData *data = [NSData dataWithContentsOfFile:[self sharedHistoryPath]];
   if (data)
     {
-      FVRecentParser *delegate = [[[FVRecentParser alloc] init] autorelease];
-      NSXMLParser *parser = [[[NSXMLParser alloc] initWithData:data] autorelease];
+      FVRecentParser *delegate = AUTORELEASE ([[FVRecentParser alloc] init]);
+      NSXMLParser *parser = AUTORELEASE ([[NSXMLParser alloc] initWithData:data]);
       [parser setShouldResolveExternalEntities:NO];
       [parser setDelegate:delegate];
       if ([parser parse])
@@ -224,7 +224,7 @@ FVExcludeRunFilesystems (void)
         [unique setObject:[NSDictionary dictionaryWithObjectsAndKeys:
             file, @"path", date, @"accessed", nil] forKey:file];
     }
-  NSSortDescriptor *sort = [[[NSSortDescriptor alloc] initWithKey:@"accessed" ascending:NO] autorelease];
+  NSSortDescriptor *sort = AUTORELEASE ([[NSSortDescriptor alloc] initWithKey:@"accessed" ascending:NO]);
   return [[unique allValues] sortedArrayUsingDescriptors:[NSArray arrayWithObject:sort]];
 }
 
@@ -244,7 +244,7 @@ FVExcludeRunFilesystems (void)
 + (id)itemWithRecord:(NSDictionary *)record
 {
   FVRecentItem *item = (FVRecentItem *)[self itemAtPath:[record objectForKey:@"path"]];
-  item->accessed = [[record objectForKey:@"accessed"] retain];
+  item->accessed = RETAIN ([record objectForKey:@"accessed"]);
   return item;
 }
 
@@ -260,8 +260,8 @@ FVExcludeRunFilesystems (void)
 
 - (void)dealloc
 {
-  [accessed release];
-  [super dealloc];
+  RELEASE (accessed);
+  DEALLOC;
 }
 
 @end
@@ -270,10 +270,10 @@ FVExcludeRunFilesystems (void)
 
 + (FVItem *)itemAtPath:(NSString *)value
 {
-  FVItem *item = [[[self alloc] init] autorelease];
+  FVItem *item = AUTORELEASE ([[self alloc] init]);
   item->path = [value copy];
-  item->attributes = [[[NSFileManager defaultManager] attributesOfItemAtPath:value
-                                                                       error:NULL] retain];
+  item->attributes = RETAIN ([[NSFileManager defaultManager] attributesOfItemAtPath:value
+                                                                       error:NULL]);
 #ifdef __linux__
   /* GNUstep falls back to min(ctime, mtime) for creation date on POSIX. That
      is not a birth time. Use statx when supplied by this filesystem instead. */
@@ -291,7 +291,7 @@ FVExcludeRunFilesystems (void)
                                                             + extended.stx_btime.tv_nsec / 1.0e9]
                forKey:NSFileCreationDate];
 #endif
-      [item->attributes release];
+      RELEASE (item->attributes);
       item->attributes = accurate;
     }
 #endif
@@ -304,9 +304,9 @@ FVExcludeRunFilesystems (void)
 
 - (void)dealloc
 {
-  [path release];
-  [attributes release];
-  [super dealloc];
+  RELEASE (path);
+  RELEASE (attributes);
+  DEALLOC;
 }
 
 - (NSString *)path
@@ -387,17 +387,17 @@ FVExcludeRunFilesystems (void)
       hidden = show;
       recursive = deep;
       generation = token;
-      target = [receiver retain];
+      target = RETAIN (receiver);
     }
   return self;
 }
 
 - (void)dealloc
 {
-  [path release];
-  [query release];
-  [target release];
-  [super dealloc];
+  RELEASE (path);
+  RELEASE (query);
+  RELEASE (target);
+  DEALLOC;
 }
 
 - (void)cancel
@@ -434,7 +434,7 @@ FVExcludeRunFilesystems (void)
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   if ([path isEqual:FVRecentsLocation])
     {
       NSArray *records = [FVRecents records];
@@ -453,7 +453,7 @@ FVExcludeRunFilesystems (void)
         }
       if (![self cancelled])
         [self deliver:rows errors:[NSArray array] done:YES];
-      [pool drain];
+      RELEASE (pool);
       return;
     }
   NSMutableArray *pending = [NSMutableArray arrayWithObject:path];
@@ -462,7 +462,7 @@ FVExcludeRunFilesystems (void)
   NSMutableArray *errors = [[NSMutableArray alloc] init];
   while ([pending count] && ![self cancelled])
     {
-      NSString *folder = [[[pending lastObject] retain] autorelease];
+      NSString *folder = AUTORELEASE (RETAIN ([pending lastObject]));
       [pending removeLastObject];
       DIR *dir = opendir ([folder fileSystemRepresentation]);
       if (!dir)
@@ -500,7 +500,7 @@ FVExcludeRunFilesystems (void)
             continue;
           if (!hidden && entry->d_name[0] == '.')
             continue;
-          NSAutoreleasePool *entryPool = [[NSAutoreleasePool alloc] init];
+          CREATE_AUTORELEASE_POOL (entryPool);
           NSString *name = [[NSFileManager defaultManager]
               stringWithFileSystemRepresentation:entry->d_name
                                           length:strlen (entry->d_name)];
@@ -508,7 +508,7 @@ FVExcludeRunFilesystems (void)
             {
               [errors
                   addObject:[folder stringByAppendingString:@": filename cannot be represented"]];
-              [entryPool drain];
+              RELEASE (entryPool);
               continue;
             }
           FVItem *item = [FVItem itemAtPath:[folder stringByAppendingPathComponent:name]];
@@ -520,20 +520,20 @@ FVExcludeRunFilesystems (void)
           if ([batch count] >= 200)
             {
               [self deliver:batch errors:errors done:NO];
-              [batch release];
-              [errors release];
+              RELEASE (batch);
+              RELEASE (errors);
               batch = [[NSMutableArray alloc] init];
               errors = [[NSMutableArray alloc] init];
             }
-          [entryPool drain];
+          RELEASE (entryPool);
         }
       closedir (dir);
     }
   if (![self cancelled])
     [self deliver:batch errors:errors done:YES];
-  [batch release];
-  [errors release];
-  [pool drain];
+  RELEASE (batch);
+  RELEASE (errors);
+  RELEASE (pool);
 }
 
 @end

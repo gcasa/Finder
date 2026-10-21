@@ -126,7 +126,7 @@ FVFileStamp (NSString *file, BOOL follow)
 static NSTextField *
 FVLabel (NSRect frame, NSString *text)
 {
-  NSTextField *field = [[[NSTextField alloc] initWithFrame:frame] autorelease];
+  NSTextField *field = AUTORELEASE ([[NSTextField alloc] initWithFrame:frame]);
   [field setEditable:NO];
   [field setBezeled:NO];
   [field setBordered:NO];
@@ -145,7 +145,7 @@ FVMetadata (NSDictionary *attributes, NSString *key)
 static NSButton *
 FVButton (NSView *view, NSString *title, SEL action, id target, CGFloat x, CGFloat width)
 {
-  NSButton *button = [[[NSButton alloc] initWithFrame:NSMakeRect (x, 0, width, 30)] autorelease];
+  NSButton *button = AUTORELEASE ([[NSButton alloc] initWithFrame:NSMakeRect (x, 0, width, 30)]);
   [button setTitle:title];
   [button setTarget:target];
   [button setAction:action];
@@ -158,7 +158,7 @@ FVButton (NSView *view, NSString *title, SEL action, id target, CGFloat x, CGFlo
 static NSImage *
 FVToolbarImage (NSUInteger kind)
 {
-  NSImage *image = [[[NSImage alloc] initWithSize:NSMakeSize (20, 20)] autorelease];
+  NSImage *image = AUTORELEASE ([[NSImage alloc] initWithSize:NSMakeSize (20, 20)]);
   [image lockFocus];
   [[NSColor controlTextColor] set];
   NSBezierPath *glyph = [NSBezierPath bezierPath];
@@ -323,7 +323,7 @@ FVCompare (id lhs, id rhs, void *context)
     {
       [panel setContentSize:NSMakeSize (620, 300)];
       [field removeFromSuperview];
-      [field release];
+      RELEASE (field);
       field = nil;
       /* Keep the heading neutral and non-selectable: field-editor selection
          can otherwise paint it with the theme's red selection foreground. */
@@ -512,11 +512,11 @@ FVCompare (id lhs, id rhs, void *context)
 
 - (void)dealloc
 {
-  [panel release];
-  [field release];
-  [apply release];
-  [choices release];
-  [super dealloc];
+  RELEASE (panel);
+  RELEASE (field);
+  RELEASE (apply);
+  RELEASE (choices);
+  DEALLOC;
 }
 
 @end
@@ -524,11 +524,11 @@ FVCompare (id lhs, id rhs, void *context)
 static NSString *
 FVPrompt (FVWindow *owner, NSString *title, NSString *value)
 {
-  FVDialog *dialog = [[[FVDialog alloc]
+  FVDialog *dialog = AUTORELEASE (([[FVDialog alloc]
       initWithTitle:title
             message:title
               value:value ? value : @""
-            buttons:[NSArray arrayWithObjects:@"OK", @"Cancel", nil]] autorelease];
+            buttons:[NSArray arrayWithObjects:@"OK", @"Cancel", nil]]));
   return [owner runDialog:dialog] == 0 ? [dialog value] : nil;
 }
 
@@ -546,10 +546,10 @@ FVPrompt (FVWindow *owner, NSString *title, NSString *value)
   NSDictionary *item = [self itemAtRow:row];
   if (![[item objectForKey:@"group"] isEqual:@"favorite"])
     return nil;
-  NSMenu *menu = [[[NSMenu alloc] initWithTitle:@"Favorites"] autorelease];
-  NSMenuItem *remove = [[[NSMenuItem alloc] initWithTitle:@"Remove from Favorites"
+  NSMenu *menu = AUTORELEASE ([[NSMenu alloc] initWithTitle:@"Favorites"]);
+  NSMenuItem *remove = AUTORELEASE ([[NSMenuItem alloc] initWithTitle:@"Remove from Favorites"
                                                 action:@selector (removeFavorite:)
-                                         keyEquivalent:@""] autorelease];
+                                         keyEquivalent:@""]);
   [remove setTarget:[self target]];
   [remove setRepresentedObject:[item objectForKey:@"path"]];
   [menu addItem:remove];
@@ -668,8 +668,8 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)dealloc
 {
-  [typed release];
-  [super dealloc];
+  RELEASE (typed);
+  DEALLOC;
 }
 
 @end
@@ -804,7 +804,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (NSAttributedString *)attributedStringValue
 {
-  NSMutableAttributedString *text = [[[super attributedStringValue] mutableCopy] autorelease];
+  NSMutableAttributedString *text = AUTORELEASE ([[super attributedStringValue] mutableCopy]);
   [text addAttribute:NSForegroundColorAttributeName
       value:([self isHighlighted] || [self state]) ? [NSColor selectedControlTextColor]
                                                  : FVViewerTextColor ()
@@ -819,7 +819,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)drawInteriorWithFrame:(NSRect)frame inView:(NSView *)view
 {
-  NSImage *image = [[[owner iconForPath:[self representedObject]] copy] autorelease];
+  NSImage *image = AUTORELEASE ([[owner iconForPath:[self representedObject]] copy]);
   NSSize size = [image size];
   if (size.width > 0 && size.height > 0)
     {
@@ -874,7 +874,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
                                     backing:NSBackingStoreBuffered
                                       defer:NO];
   self = [super initWithWindow:window];
-  [window release];
+  RELEASE (window);
   if (self)
     {
       [window setDelegate:self];
@@ -911,9 +911,8 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       NSView *content = [window contentView];
       /* Autosave restoration may have changed the content size already. */
       NSSize contentSize = [content bounds].size;
-      NSView *bar = [[[NSView alloc]
-          initWithFrame:NSMakeRect (8, contentSize.height - 40, contentSize.width - 16, 32)]
-          autorelease];
+      NSView *bar = AUTORELEASE ([[NSView alloc]
+          initWithFrame:NSMakeRect (8, contentSize.height - 40, contentSize.width - 16, 32)]);
       [bar setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
       [content addSubview:bar];
       FVToolbarButton (bar, @"Back", @selector (back:), self, 0, 0);
@@ -964,7 +963,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       for (i = 0; i < [keys count]; i++)
         {
           NSTableColumn *column =
-              [[[NSTableColumn alloc] initWithIdentifier:[keys objectAtIndex:i]] autorelease];
+              AUTORELEASE ([[NSTableColumn alloc] initWithIdentifier:[keys objectAtIndex:i]]);
           [[column headerCell] setStringValue:[titles objectAtIndex:i]];
           [column setWidth:i == 0 ? 250 : (i == 3 || i == 5 ? 210 : 110)];
           [[column dataCell] setEditable:NO];
@@ -972,7 +971,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
           [[column dataCell] setBordered:NO];
           if (i == 0)
             {
-              FVNameCell *cell = [[[FVNameCell alloc] initTextCell:@""] autorelease];
+              FVNameCell *cell = AUTORELEASE ([[FVNameCell alloc] initTextCell:@""]);
               [cell setEditable:NO];
               [cell setSelectable:NO];
               [cell setBordered:NO];
@@ -983,17 +982,17 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       [scroll setDocumentView:table];
       [host addSubview:scroll];
       NSScrollView *sideScroll =
-          [[[NSScrollView alloc]
-              initWithFrame:NSMakeRect (8, 34, 164, contentSize.height - 82)] autorelease];
+          AUTORELEASE ([[NSScrollView alloc]
+              initWithFrame:NSMakeRect (8, 34, 164, contentSize.height - 82)]);
       [sideScroll setAutoresizingMask:NSViewHeightSizable];
       [sideScroll setHasVerticalScroller:YES];
       sidebar = [[FVSidebarView alloc] initWithFrame:[sideScroll bounds]];
       [sidebar setGridStyleMask:NSTableViewGridNone];
       [sidebar setRowHeight:MAX (22, [NSFont systemFontSize] + 7)];
-      NSTableColumn *sideColumn = [[[NSTableColumn alloc] initWithIdentifier:@"place"] autorelease];
+      NSTableColumn *sideColumn = AUTORELEASE ([[NSTableColumn alloc] initWithIdentifier:@"place"]);
       [sideColumn setWidth:158];
       [[sideColumn headerCell] setStringValue:@"Locations"];
-      [sideColumn setDataCell:[[[FVNameCell alloc] initTextCell:@""] autorelease]];
+      [sideColumn setDataCell:AUTORELEASE ([[FVNameCell alloc] initTextCell:@""])];
       [[sideColumn dataCell] setEditable:NO];
       [[sideColumn dataCell] setBordered:NO];
       [sidebar addTableColumn:sideColumn];
@@ -1006,12 +1005,12 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       [sidebar registerForDraggedTypes:[NSArray arrayWithObject:NSFilenamesPboardType]];
       [sideScroll setDocumentView:sidebar];
       [content addSubview:sideScroll];
-      status = [FVLabel (NSMakeRect (10, 5, contentSize.width - 260, 24), @"Loading…") retain];
+      status = RETAIN (FVLabel (NSMakeRect (10, 5, contentSize.width - 260, 24), @"Loading…"));
       [status setAutoresizingMask:NSViewWidthSizable];
       [[status cell] setLineBreakMode:NSLineBreakByTruncatingTail];
       [content addSubview:status];
-      activityStatus = [FVLabel (NSMakeRect (contentSize.width - 240, 5, 230, 24),
-                                @"Idle") retain];
+      activityStatus = RETAIN (FVLabel (NSMakeRect (contentSize.width - 240, 5, 230, 24),
+                                @"Idle"));
       [activityStatus setAlignment:NSRightTextAlignment];
       [activityStatus setAutoresizingMask:NSViewMinXMargin];
       [[activityStatus cell] setLineBreakMode:NSLineBreakByTruncatingTail];
@@ -1028,11 +1027,11 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
         [self columnMode:nil];
       else if (savedMode == 2)
         [self iconMode:nil];
-      monitor = [[NSTimer scheduledTimerWithTimeInterval:1
+      monitor = RETAIN ([NSTimer scheduledTimerWithTimeInterval:1
                                                   target:self
                                                 selector:@selector (checkDirectory:)
                                                 userInfo:nil
-                                                 repeats:YES] retain];
+                                                 repeats:YES]);
     }
   return self;
 }
@@ -1166,7 +1165,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   BOOL favoritesExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:1]];
   BOOL mountedExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:2]];
   BOOL networkExpanded = initial || [sidebar isItemExpanded:[places objectAtIndex:3]];
-  [places release];
+  RELEASE (places);
   places = [[NSArray alloc] initWithObjects:
       [NSDictionary dictionaryWithObjectsAndKeys:@"Common Locations", @"title",
                                                  common, @"children", nil],
@@ -1201,7 +1200,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       historyIndex = [history count] - 1;
     }
   NSString *newPath = [value copy];
-  [path release];
+  RELEASE (path);
   path = newPath;
   searching = NO;
   [browserRows removeAllObjects];
@@ -1213,14 +1212,14 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   if (recents)
     {
       [breadcrumbs addItemWithTitle:@"Recents"];
-      [sortKey release];
+      RELEASE (sortKey);
       sortKey = [@"date" copy];
       ascending = NO;
       [table moveColumn:[table columnWithIdentifier:@"date"] toColumn:1];
       [table moveColumn:[table columnWithIdentifier:@"path"] toColumn:2];
       if (mode == 1)
         [self listMode:nil];
-      [spaceDescription release];
+      RELEASE (spaceDescription);
       spaceDescription = nil;
       [self refresh:nil];
       return;
@@ -1268,13 +1267,13 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
         }
       [columns setObject:selected forKey:folder];
     }
-  [savedBrowserSelection release];
+  RELEASE (savedBrowserSelection);
   savedBrowserSelection = [columns copy];
-  [savedSelection release];
+  RELEASE (savedSelection);
   savedSelection = [[self selectedPaths] copy];
   savedScroll = [[scroll contentView] bounds].origin;
   [listing cancel];
-  [listing release];
+  RELEASE (listing);
   generation++;
   pendingBrowserLoads = 0;
   [items removeAllObjects];
@@ -1305,7 +1304,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   if (!loading)
     {
       [self sortItems];
-      [listing release];
+      RELEASE (listing);
       listing = nil;
     }
   [table reloadData];
@@ -1546,8 +1545,8 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (NSString *)chooseApplicationForFile:(NSString *)value
 {
-  FVDialog *dialog = [[[FVDialog alloc]
-      initWithApplications:[FVLauncher applicationsForFile:value] file:value] autorelease];
+  FVDialog *dialog = AUTORELEASE ([[FVDialog alloc]
+      initWithApplications:[FVLauncher applicationsForFile:value] file:value]);
   if ([self runDialog:dialog] != 0)
     return nil;
   NSString *app = [dialog selectedApplication];
@@ -1617,11 +1616,11 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   if (historyIndex > 0)
     {
       historyIndex--;
-      NSString *p = [[history objectAtIndex:historyIndex] retain];
-      [path release];
+      NSString *p = RETAIN ([history objectAtIndex:historyIndex]);
+      RELEASE (path);
       path = [p copy];
       [self navigate:p];
-      [p release];
+      RELEASE (p);
     }
 }
 
@@ -1630,11 +1629,11 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   if (historyIndex + 1 < (NSInteger)[history count])
     {
       historyIndex++;
-      NSString *p = [[history objectAtIndex:historyIndex] retain];
-      [path release];
+      NSString *p = RETAIN ([history objectAtIndex:historyIndex]);
+      RELEASE (path);
       path = [p copy];
       [self navigate:p];
-      [p release];
+      RELEASE (p);
     }
 }
 
@@ -1672,7 +1671,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   for (panelIndex = 0; panelIndex < [infoPanels count]; panelIndex++)
     [[infoPanels objectAtIndex:panelIndex] close];
   [listing cancel];
-  [listing release];
+  RELEASE (listing);
   listing = nil;
   [operation cancel];
   [monitor invalidate];
@@ -1698,7 +1697,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
     ascending = !ascending;
   else
     {
-      [sortKey release];
+      RELEASE (sortKey);
       sortKey = [[column identifier] copy];
       ascending = YES;
     }
@@ -1711,7 +1710,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
     if ([selected containsObject:[[items objectAtIndex:i] path]])
       [indices addIndex:i];
   [table selectRowIndexes:indices byExtendingSelection:NO];
-  [selected release];
+  RELEASE (selected);
 }
 
 - (void)toggleFolders:(id)sender
@@ -1799,7 +1798,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
           FVThumbnailOperation *job = [[FVThumbnailOperation alloc]
               initWithPath:value generation:thumbnailGeneration target:self];
           [thumbnailQueue addOperation:job];
-          [job release];
+          RELEASE (job);
         }
     }
   NSImage *image = [iconCache objectForKey:value];
@@ -1857,7 +1856,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
     pendingThumbnails--;
   [self updateActivity];
   NSData *data = [result objectForKey:@"data"];
-  NSImage *preview = data ? [[[NSImage alloc] initWithData:data] autorelease] : nil;
+  NSImage *preview = data ? AUTORELEASE ([[NSImage alloc] initWithData:data]) : nil;
   if (preview && [preview isValid])
     {
       NSString *file = [result objectForKey:@"path"];
@@ -1978,18 +1977,18 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)showText:(NSString *)text title:(NSString *)title
 {
-  NSPanel *panel = [[[NSPanel alloc]
+  NSPanel *panel = AUTORELEASE ([[NSPanel alloc]
       initWithContentRect:NSMakeRect (180, 180, 620, 430)
                 styleMask:NSTitledWindowMask | NSClosableWindowMask | NSResizableWindowMask
                   backing:NSBackingStoreBuffered
-                    defer:NO] autorelease];
+                    defer:NO]);
   [panel setReleasedWhenClosed:NO];
   [panel setTitle:title];
   NSScrollView *sv =
-      [[[NSScrollView alloc] initWithFrame:[[panel contentView] bounds]] autorelease];
+      AUTORELEASE ([[NSScrollView alloc] initWithFrame:[[panel contentView] bounds]]);
   [sv setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
   [sv setHasVerticalScroller:YES];
-  NSTextView *view = [[[NSTextView alloc] initWithFrame:[sv bounds]] autorelease];
+  NSTextView *view = AUTORELEASE ([[NSTextView alloc] initWithFrame:[sv bounds]]);
   [view setString:text];
   [view setEditable:NO];
   [view setVerticallyResizable:YES];
@@ -2151,7 +2150,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       @"Duplicating…", @"duplicate",
       @"Moving to Trash…", @"trash", @"Renaming…", @"rename",
       @"Creating folder…", @"mkdir", nil];
-  [operationActivity release];
+  RELEASE (operationActivity);
   operationActivity = [[activities objectForKey:kind] copy];
   [self updateActivity];
   [operation start];
@@ -2165,12 +2164,12 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)operationFinished:(NSDictionary *)result
 {
-  [operation release];
+  RELEASE (operation);
   operation = nil;
-  [operationActivity release];
+  RELEASE (operationActivity);
   operationActivity = nil;
   [self updateActivity];
-  [undoRecords release];
+  RELEASE (undoRecords);
   undoRecords = [[result objectForKey:@"undo"] copy];
   NSPasteboard *pb = [NSPasteboard generalPasteboard];
   if (cutChangeCount >= 0 && [pb changeCount] == cutChangeCount)
@@ -2215,7 +2214,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
       [request setObject:@"cancel" forKey:@"choice"];
       return;
     }
-  FVDialog *dialog = [[[FVDialog alloc]
+  FVDialog *dialog = AUTORELEASE (([[FVDialog alloc]
       initWithTitle:@"Destination already exists"
             message:[NSString
                         stringWithFormat:
@@ -2223,8 +2222,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
                             @"‘FileViewer replaced item…’. Directories are replaced, never merged.",
                             [request objectForKey:@"destination"]]
               value:nil
-            buttons:[NSArray arrayWithObjects:@"Keep Both", @"Skip", @"Replace", @"Cancel", nil]]
-      autorelease];
+            buttons:[NSArray arrayWithObjects:@"Keep Both", @"Skip", @"Replace", @"Cancel", nil]]));
   NSInteger choice = [self runDialog:dialog];
   NSArray *choices = [NSArray arrayWithObjects:@"keep", @"skip", @"replace", @"cancel", nil];
   [request setObject:choice >= 0 && choice < 4 ? [choices objectAtIndex:choice] : @"cancel"
@@ -2240,7 +2238,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
                                          sources:undoRecords
                                      destination:nil
                                           target:self];
-  [operationActivity release];
+  RELEASE (operationActivity);
   operationActivity = [@"Undoing…" copy];
   [self updateActivity];
   [operation start];
@@ -2249,7 +2247,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 - (void)cancel:(id)sender
 {
   [listing cancel];
-  [listing release];
+  RELEASE (listing);
   listing = nil;
   generation++;
   pendingBrowserLoads = 0;
@@ -2257,7 +2255,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   loading = NO;
   if (operation)
     {
-      [operationActivity release];
+      RELEASE (operationActivity);
       operationActivity = [@"Cancelling…" copy];
     }
   [self updateActivity];
@@ -2450,7 +2448,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)loadBrowserFolder:(NSDictionary *)request
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   NSError *error = nil;
   NSString *folder = [request objectForKey:@"path"];
   NSArray *names = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:folder error:&error];
@@ -2467,7 +2465,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
   if (error)
     [result setObject:[error localizedDescription] forKey:@"error"];
   [self performSelectorOnMainThread:@selector (browserLoaded:) withObject:result waitUntilDone:NO];
-  [pool drain];
+  RELEASE (pool);
 }
 
 - (void)browserLoaded:(NSDictionary *)result
@@ -2570,7 +2568,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)browserSelected:(id)sender
 {
-  [savedBrowserSelection release];
+  RELEASE (savedBrowserSelection);
   savedBrowserSelection = nil;
   [self selectionChanged];
 }
@@ -2618,7 +2616,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 
 - (void)readDirectoryStamp:(NSDictionary *)request
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   NSMutableDictionary *stamp = [NSMutableDictionary dictionaryWithDictionary:request];
   NSArray *folders = [request objectForKey:@"folders"];
   NSMutableDictionary *snapshots = [NSMutableDictionary dictionary];
@@ -2663,7 +2661,7 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
                                              (double)space.f_bavail * space.f_frsize / 1073741824.0]
            forKey:@"space"];
   [self performSelectorOnMainThread:@selector (directoryStamp:) withObject:stamp waitUntilDone:NO];
-  [pool drain];
+  RELEASE (pool);
 }
 
 - (void)directoryStamp:(NSDictionary *)stamp
@@ -2683,9 +2681,9 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
     if ([previous objectForKey:folder]
         && ![[previous objectForKey:folder] isEqual:[snapshots objectForKey:folder]])
       changed = YES;
-  [lastStamp release];
+  RELEASE (lastStamp);
   lastStamp = [stamp copy];
-  [spaceDescription release];
+  RELEASE (spaceDescription);
   spaceDescription = [[stamp objectForKey:@"space"] copy];
   if (changed)
     [self refresh:nil];
@@ -2750,42 +2748,42 @@ FVSelectionEvent (NSEvent *event, NSUInteger modifiers)
 {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [thumbnailQueue cancelAllOperations];
-  [thumbnailQueue release];
-  [thumbnailCache release];
-  [thumbnailRequests release];
+  RELEASE (thumbnailQueue);
+  RELEASE (thumbnailCache);
+  RELEASE (thumbnailRequests);
   [monitor invalidate];
-  [monitor release];
+  RELEASE (monitor);
   [listing cancel];
-  [listing release];
+  RELEASE (listing);
   [operation cancel];
-  [operation release];
-  [path release];
-  [items release];
-  [history release];
-  [table release];
-  [sidebar release];
-  [places release];
-  [filter release];
-  [status release];
-  [activityStatus release];
-  [operationActivity release];
-  [breadcrumbs release];
-  [scroll release];
-  [host release];
-  [browser release];
-  [icons release];
-  [browserRows release];
-  [iconCache release];
-  [placeIcons release];
-  [errors release];
-  [savedSelection release];
-  [savedBrowserSelection release];
-  [lastStamp release];
-  [spaceDescription release];
-  [sortKey release];
-  [infoPanels release];
-  [undoRecords release];
-  [super dealloc];
+  RELEASE (operation);
+  RELEASE (path);
+  RELEASE (items);
+  RELEASE (history);
+  RELEASE (table);
+  RELEASE (sidebar);
+  RELEASE (places);
+  RELEASE (filter);
+  RELEASE (status);
+  RELEASE (activityStatus);
+  RELEASE (operationActivity);
+  RELEASE (breadcrumbs);
+  RELEASE (scroll);
+  RELEASE (host);
+  RELEASE (browser);
+  RELEASE (icons);
+  RELEASE (browserRows);
+  RELEASE (iconCache);
+  RELEASE (placeIcons);
+  RELEASE (errors);
+  RELEASE (savedSelection);
+  RELEASE (savedBrowserSelection);
+  RELEASE (lastStamp);
+  RELEASE (spaceDescription);
+  RELEASE (sortKey);
+  RELEASE (infoPanels);
+  RELEASE (undoRecords);
+  DEALLOC;
 }
 
 @end

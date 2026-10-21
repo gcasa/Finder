@@ -93,7 +93,7 @@ static unsigned checks;
 - (id)init
 {
   if ((self = [super init]))
-    pasteboard = [[NSPasteboard pasteboardWithUniqueName] retain];
+    pasteboard = RETAIN ([NSPasteboard pasteboardWithUniqueName]);
   return self;
 }
 
@@ -105,8 +105,8 @@ static unsigned checks;
 - (void)dealloc
 {
   [pasteboard releaseGlobally];
-  [pasteboard release];
-  [super dealloc];
+  RELEASE (pasteboard);
+  DEALLOC;
 }
 
 @end
@@ -184,7 +184,7 @@ MountedPaths (FVWindow *window)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   /* Volatile arguments isolate these settings from the user's preferences. */
@@ -360,8 +360,8 @@ main (void)
   CHECK ([[FVLauncher applicationsForFile:choiceFile] count] == 0);
   [FVLauncher setDefaultApplication:app forFile:@"no-extension"];
   CHECK ([FVLauncher defaultApplicationForFile:@"no-extension"] == nil);
-  [answer release];
-  [(id)dialog release];
+  RELEASE (answer);
+  RELEASE ((id)dialog);
   [window removeFavorite:nil];
   favorites = [source outlineView:outline child:1 ofItem:nil];
   CHECK ([source outlineView:outline numberOfChildrenOfItem:favorites] == 2);
@@ -394,7 +394,7 @@ main (void)
   CHECK ([[window valueForKey:@"path"] isEqual:originalPath]);
   CHECK ([fm fileExistsAtPath:root]);
   CHECK ([fm fileExistsAtPath:document]);
-  [originalPath release];
+  RELEASE (originalPath);
   [[drag draggingPasteboard] setPropertyList:[NSArray arrayWithObject:@"/nonexistent-fixture"]
                                    forType:NSFilenamesPboardType];
   CHECK ([source outlineView:outline validateDrop:(id)drag proposedItem:nil proposedChildIndex:-1]
@@ -421,10 +421,10 @@ main (void)
   CHECK ([application openFile:root withApplication:nil andDeactivate:NO]);
   NSArray *workspaceWindows = [application valueForKey:@"windows"];
   CHECK ([workspaceWindows count] == 1);
-  FVWindow *workspaceWindow = [[workspaceWindows objectAtIndex:0] retain];
+  FVWindow *workspaceWindow = RETAIN ([workspaceWindows objectAtIndex:0]);
   CHECK ([[workspaceWindow valueForKey:@"path"] isEqual:root]);
   [[workspaceWindow window] close];
-  [workspaceWindow release];
+  RELEASE (workspaceWindow);
   [application preferences:nil];
   NSButton *hiddenFiles = [application valueForKey:@"hiddenFilesCheckbox"];
   CHECK ([defaults objectForKey:@"Hidden"] == nil);
@@ -471,7 +471,7 @@ main (void)
   CHECK (![columnPaths containsObject:hiddenFile]);
   CHECK (![columnPaths containsObject:hiddenFolder]);
   [[columnsWindow window] close];
-  [columnsWindow release];
+  RELEASE (columnsWindow);
   NSButton *excludeRun = [application valueForKey:@"excludeRunCheckbox"];
   CHECK ([excludeRun state] == NSOnState);
   [excludeRun performClick:nil];
@@ -492,9 +492,9 @@ main (void)
   CHECK ([[snapshot representationUsingType:NSPNGFileType properties:[NSDictionary dictionary]]
       writeToFile:@"obj/tests/location-preferences.png" atomically:YES]);
   [[application valueForKey:@"preferencesPanel"] close];
-  [application release];
+  RELEASE (application);
   [[secondWindow window] close];
-  [secondWindow release];
+  RELEASE (secondWindow);
   [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
   /* Parse actual mount-table syntax, including escapes and remote FUSE sources. */
   NSString *mountTable = [root stringByAppendingPathComponent:@"mountinfo"];
@@ -577,13 +577,13 @@ main (void)
   [defaults removeObjectForKey:@"ExcludeRunFilesystems"];
   [[window window] close];
   Tick (.1);
-  [window release];
-  [drag release];
+  RELEASE (window);
+  RELEASE (drag);
   [defaults removeObjectForKey:@"Favorites"];
   [defaults removeObjectForKey:@"Hidden"];
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u locations and launch assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

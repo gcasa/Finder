@@ -47,7 +47,7 @@ Fixture (NSString *output, BOOL movie, NSString *color)
   [task launch];
   [task waitUntilExit];
   CHECK ([task terminationStatus] == 0);
-  [task release];
+  RELEASE (task);
 }
 
 static NSImage *
@@ -124,8 +124,8 @@ CheckColor (NSImage *image, BOOL red)
 
 - (void)dealloc
 {
-  [result release];
-  [super dealloc];
+  RELEASE (result);
+  DEALLOC;
 }
 
 @end
@@ -143,7 +143,7 @@ Capture (NSView *view, NSString *file)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -167,7 +167,7 @@ main (void)
   [coverTask launch];
   [coverTask waitUntilExit];
   CHECK ([coverTask terminationStatus] == 0);
-  [coverTask release];
+  RELEASE (coverTask);
   CHECK ([@"invalid image" writeToFile:broken atomically:YES
                                encoding:NSUTF8StringEncoding error:NULL]);
   FVWindow *window = [[FVWindow alloc] initWithPath:root];
@@ -175,7 +175,7 @@ main (void)
   [window showWindow:nil];
   [other showWindow:nil];
   Tick (.4);
-  NSImage *first = [[Preview (window, photo) retain] autorelease];
+  NSImage *first = AUTORELEASE (RETAIN (Preview (window, photo)));
   CheckColor (Preview (window, movie), NO);
   CheckColor (Preview (window, covered), YES);
   FVThumbnailReceiver *receiver = [[FVThumbnailReceiver alloc] init];
@@ -187,12 +187,12 @@ main (void)
   while (![receiver result] && [fallbackLimit timeIntervalSinceNow] > 0)
     Tick (.03);
   CHECK ([[receiver result] objectForKey:@"data"] != nil);
-  NSImage *fallbackImage = [[[NSImage alloc]
-      initWithData:[[receiver result] objectForKey:@"data"]] autorelease];
+  NSImage *fallbackImage = AUTORELEASE ([[NSImage alloc]
+      initWithData:[[receiver result] objectForKey:@"data"]]);
   CheckColor (fallbackImage, NO);
-  [fallback release];
-  [queue release];
-  [receiver release];
+  RELEASE (fallback);
+  RELEASE (queue);
+  RELEASE (receiver);
   Preview (other, photo);
   Capture ([[window window] contentView], @"obj/tests/thumbnails.png");
   [window iconForPath:broken];
@@ -224,7 +224,7 @@ main (void)
   Preview (window, photo);
   Preview (other, movie);
   /* Changing an image must replace the cached preview on automatic refresh. */
-  NSImage *before = [[Preview (window, photo) retain] autorelease];
+  NSImage *before = AUTORELEASE (RETAIN (Preview (window, photo)));
   Fixture (photo, NO, @"green");
   NSDate *end = [NSDate dateWithTimeIntervalSinceNow:6];
   while ([[window valueForKey:@"thumbnailCache"] objectForKey:photo] == before
@@ -239,16 +239,16 @@ main (void)
   CHECK ([[browser matrixInColumn:0] numberOfRows] == 4);
   CHECK ([[[browser matrixInColumn:0] cellAtRow:0 column:0] image] != nil);
   [[application valueForKey:@"preferencesPanel"] close];
-  [application release];
+  RELEASE (application);
   [[window window] close];
   [[other window] close];
   Tick (.2);
-  [window release];
-  [other release];
+  RELEASE (window);
+  RELEASE (other);
   [defaults removeObjectForKey:@"ShowThumbnails"];
   CHECK ([[NSFileManager defaultManager] removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u thumbnail and preferences assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

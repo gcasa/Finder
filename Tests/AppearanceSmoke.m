@@ -43,7 +43,7 @@ Capture (NSView *view, NSString *path)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -90,6 +90,6 @@ main (void)
   [defaults setObject:[NSArray arrayWithObject:@"invalid"] forKey:@"ViewerBackgroundColor"];
   CHECK ([FVViewerBackgroundColor () isEqual:defaultColor]);
   NSLog (@"Appearance smoke passed");
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }

@@ -73,13 +73,13 @@ Exists (NSString *p)
 {
   [items addObjectsFromArray:[value objectForKey:@"items"]];
   done = [[value objectForKey:@"done"] boolValue];
-  [result release];
+  RELEASE (result);
   result = [value copy];
 }
 
 - (void)operationFinished:(NSDictionary *)value
 {
-  [result release];
+  RELEASE (result);
   result = [value copy];
   done = YES;
 }
@@ -95,9 +95,9 @@ Exists (NSString *p)
 
 - (void)dealloc
 {
-  [result release];
-  [items release];
-  [super dealloc];
+  RELEASE (result);
+  RELEASE (items);
+  DEALLOC;
 }
 
 @end
@@ -144,7 +144,7 @@ Wait (FVReceiver *receiver)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   char temp[] = "/tmp/fileviewer-tests-XXXXXX";
   CHECK (mkdtemp (temp) != NULL);
   NSString *root = [NSString stringWithUTF8String:temp];
@@ -208,7 +208,7 @@ main (void)
   [job cancel];
   CHECK (![job transfer:src to:copy move:NO error:&error]);
   CHECK (!Exists (copy));
-  [job release];
+  RELEASE (job);
   FVReceiver *receiver = [[FVReceiver alloc] init];
   FVListing *listing = [[FVListing alloc] initWithPath:src
                                                  query:@""
@@ -219,8 +219,8 @@ main (void)
   [listing start];
   Wait (receiver);
   CHECK ([receiver->items count] == 7);
-  [listing release];
-  [receiver release];
+  RELEASE (listing);
+  RELEASE (receiver);
   receiver = [[FVReceiver alloc] init];
   listing = [[FVListing alloc] initWithPath:src
                                       query:@""
@@ -231,8 +231,8 @@ main (void)
   [listing start];
   Wait (receiver);
   CHECK ([receiver->items count] == 6);
-  [listing release];
-  [receiver release];
+  RELEASE (listing);
+  RELEASE (receiver);
   receiver = [[FVReceiver alloc] init];
   listing = [[FVListing alloc] initWithPath:dst
                                       query:@"no-match"
@@ -243,8 +243,8 @@ main (void)
   [listing start];
   Wait (receiver);
   CHECK ([receiver->items count] == 0);
-  [listing release];
-  [receiver release];
+  RELEASE (listing);
+  RELEASE (receiver);
   NSString *locked = [root stringByAppendingPathComponent:@"inaccessible"];
   CHECK (mkdir ([locked fileSystemRepresentation], 0000) == 0);
   receiver = [[FVReceiver alloc] init];
@@ -257,8 +257,8 @@ main (void)
   [listing start];
   Wait (receiver);
   CHECK ([[receiver->result objectForKey:@"errors"] count] > 0);
-  [listing release];
-  [receiver release];
+  RELEASE (listing);
+  RELEASE (receiver);
   chmod ([locked fileSystemRepresentation], 0700);
   receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc]
@@ -272,8 +272,8 @@ main (void)
   Wait (receiver);
   CHECK ([[receiver->result objectForKey:@"completed"] count] == 1);
   CHECK ([[receiver->result objectForKey:@"failed"] count] == 1);
-  [job release];
-  [receiver release];
+  RELEASE (job);
+  RELEASE (receiver);
   receiver = [[FVReceiver alloc] init];
   receiver->choice = @"keep";
   job = [[FVOperations alloc]
@@ -284,8 +284,8 @@ main (void)
   [job start];
   Wait (receiver);
   CHECK (Exists ([dst stringByAppendingPathComponent:@"-leading 2"]));
-  [job release];
-  [receiver release];
+  RELEASE (job);
+  RELEASE (receiver);
   /* Force EXDEV at the platform seam, exercising the complete real copier,
      source verification, publication and removal on temporary paths. */
   NSString *crossSource = [root stringByAppendingPathComponent:@"cross-source"],
@@ -304,7 +304,7 @@ main (void)
   CHECK (Exists ([crossDest stringByAppendingPathComponent:@"child"]));
   CHECK ([[fm pathContentOfSymbolicLinkAtPath:[crossDest stringByAppendingPathComponent:@"link"]]
       isEqual:@"child"]);
-  [job release];
+  RELEASE (job);
   NSString *readonly = [src stringByAppendingPathComponent:@"readonly"];
   Write (readonly, @"read only source");
   CHECK (chmod ([readonly fileSystemRepresentation], 0440) == 0);
@@ -331,7 +331,7 @@ main (void)
                    move:NO
                   error:&error]);
   CHECK (chmod ([locked fileSystemRepresentation], 0700) == 0);
-  [job release];
+  RELEASE (job);
   NSString *large = [src stringByAppendingPathComponent:@"large"];
   NSMutableData *largeData = [NSMutableData dataWithLength:4 * 1024 * 1024];
   CHECK ([largeData writeToFile:large atomically:YES]);
@@ -340,7 +340,7 @@ main (void)
   CHECK (![job transfer:large to:cancelledCopy move:NO error:&error]);
   CHECK (!Exists (cancelledCopy));
   CHECK (Exists (large));
-  [job release];
+  RELEASE (job);
   receiver = [[FVReceiver alloc] init];
   receiver->choice = @"skip";
   job = [[FVOperations alloc]
@@ -351,8 +351,8 @@ main (void)
   [job start];
   Wait (receiver);
   CHECK ([[receiver->result objectForKey:@"skipped"] count] == 1);
-  [job release];
-  [receiver release];
+  RELEASE (job);
+  RELEASE (receiver);
   receiver = [[FVReceiver alloc] init];
   receiver->choice = @"cancel";
   job = [[FVOperations alloc]
@@ -364,8 +364,8 @@ main (void)
   Wait (receiver);
   CHECK ([[receiver->result objectForKey:@"cancelled"] boolValue]);
   CHECK ([[receiver->result objectForKey:@"completed"] count] == 0);
-  [job release];
-  [receiver release];
+  RELEASE (job);
+  RELEASE (receiver);
   Write ([src stringByAppendingPathComponent:@"-leading"], @"new contents");
   receiver = [[FVReceiver alloc] init];
   receiver->choice = @"replace";
@@ -381,15 +381,15 @@ main (void)
   CHECK ([[NSString stringWithContentsOfFile:[dst stringByAppendingPathComponent:@"-leading"]
                                     encoding:NSUTF8StringEncoding
                                        error:NULL] isEqual:@"new contents"]);
-  [job release];
-  [receiver release];
+  RELEASE (job);
+  RELEASE (receiver);
   /* Unsupported special files must fail without creating a visible partial tree. */
   NSString *fifo = [src stringByAppendingPathComponent:@"pipe"];
   CHECK (mkfifo ([fifo fileSystemRepresentation], 0600) == 0);
   job = [[FVOperations alloc] initWithKind:@"copy" sources:nil destination:nil target:nil];
   CHECK (![job transfer:fifo to:[dst stringByAppendingPathComponent:@"pipe"] move:NO error:&error]);
   CHECK (Exists (fifo));
-  [job release];
+  RELEASE (job);
   /* Undo validates identity and refuses to overwrite a recreated pathname. */
   NSString *undoSource = [src stringByAppendingPathComponent:@"undo-source"],
            *undoDest = [dst stringByAppendingPathComponent:@"undo-target"];
@@ -403,9 +403,9 @@ main (void)
   Wait (receiver);
   NSArray *records = [receiver->result objectForKey:@"undo"];
   CHECK ([records count] == 1);
-  NSDictionary *record = [[records objectAtIndex:0] retain];
-  [job release];
-  [receiver release];
+  NSDictionary *record = RETAIN ([records objectAtIndex:0]);
+  RELEASE (job);
+  RELEASE (receiver);
   job = [[FVOperations alloc] initWithKind:@"undo" sources:nil destination:nil target:nil];
   Write (undoSource, @"unrelated replacement");
   CHECK (![job undoRecord:record error:&error]);
@@ -414,8 +414,8 @@ main (void)
   CHECK ([job undoRecord:record error:&error]);
   CHECK (Exists (undoSource));
   CHECK (!Exists (undoDest));
-  [record release];
-  [job release];
+  RELEASE (record);
+  RELEASE (job);
   receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc] initWithKind:@"rename"
                                    sources:[NSArray arrayWithObject:undoSource]
@@ -423,15 +423,15 @@ main (void)
                                     target:receiver];
   [job start];
   Wait (receiver);
-  record = [[[receiver->result objectForKey:@"undo"] objectAtIndex:0] retain];
-  [job release];
-  [receiver release];
+  record = RETAIN ([[receiver->result objectForKey:@"undo"] objectAtIndex:0]);
+  RELEASE (job);
+  RELEASE (receiver);
   Write (undoDest, @"changed since move");
   job = [[FVOperations alloc] initWithKind:@"undo" sources:nil destination:nil target:nil];
   CHECK (![job undoRecord:record error:&error]);
   CHECK (Exists (undoDest));
-  [job release];
-  [record release];
+  RELEASE (job);
+  RELEASE (record);
   NSString *undoFolder = [root stringByAppendingPathComponent:@"undo-folder"];
   receiver = [[FVReceiver alloc] init];
   job = [[FVOperations alloc] initWithKind:@"mkdir"
@@ -440,14 +440,14 @@ main (void)
                                     target:receiver];
   [job start];
   Wait (receiver);
-  record = [[[receiver->result objectForKey:@"undo"] objectAtIndex:0] retain];
-  [job release];
-  [receiver release];
+  record = RETAIN ([[receiver->result objectForKey:@"undo"] objectAtIndex:0]);
+  RELEASE (job);
+  RELEASE (receiver);
   job = [[FVOperations alloc] initWithKind:@"undo" sources:nil destination:nil target:nil];
   CHECK ([job undoRecord:record error:&error]);
   CHECK (!Exists (undoFolder));
-  [record release];
-  [job release];
+  RELEASE (record);
+  RELEASE (job);
   /* Isolated Trash: environment is read by NSProcessInfo, set in test runner. */
   NSString *trashSource = [root stringByAppendingPathComponent:@"trash me 日本語"];
   Write (trashSource, @"trash");
@@ -474,7 +474,7 @@ main (void)
   CHECK (Exists (trashSource));
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u filesystem and model assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

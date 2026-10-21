@@ -58,7 +58,7 @@ Record (NSString *file, NSTimeInterval time)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSFileManager *fm = [NSFileManager defaultManager];
@@ -119,8 +119,8 @@ main (void)
   CHECK ([[snapshot representationUsingType:NSPNGFileType properties:[NSDictionary dictionary]]
       writeToFile:@"obj/tests/recents.png" atomically:YES]);
   CHECK (![window allowsFileDrop]);
-  NSMenuItem *paste = [[[NSMenuItem alloc] initWithTitle:@"Paste"
-      action:@selector (paste:) keyEquivalent:@""] autorelease];
+  NSMenuItem *paste = AUTORELEASE ([[NSMenuItem alloc] initWithTitle:@"Paste"
+      action:@selector (paste:) keyEquivalent:@""]);
   CHECK (![window validateMenuItem:paste]);
   [window runOperation:@"copy" paths:[NSArray arrayWithObject:a] destination:nil];
   CHECK ([window valueForKey:@"operation"] == nil);
@@ -172,12 +172,12 @@ main (void)
   [[window window] close];
   [[other window] close];
   Tick ();
-  [window release];
-  [other release];
+  RELEASE (window);
+  RELEASE (other);
   [defaults removeObjectForKey:@"RecentFiles"];
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u Recents assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

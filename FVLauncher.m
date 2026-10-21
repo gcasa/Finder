@@ -56,7 +56,7 @@
       path = [file copy];
       binary = [[[NSWorkspace sharedWorkspace] locateApplicationBinary:app] copy];
       host = [[[NSUserDefaults standardUserDefaults] stringForKey:@"NSHost"] copy];
-      target = [receiver retain];
+      target = RETAIN (receiver);
       selector = action;
     }
   return self;
@@ -64,10 +64,10 @@
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   success = [FVLauncher launchApplication:application file:path binary:binary host:host];
   [self performSelectorOnMainThread:@selector (complete) withObject:nil waitUntilDone:NO];
-  [pool drain];
+  RELEASE (pool);
 }
 
 - (void)complete
@@ -78,18 +78,18 @@
   [target performSelector:selector withObject:result];
   /* Release UI owners on the main thread, even if their window was closed
      while the remote application was still responding. */
-  [target release];
+  RELEASE (target);
   target = nil;
 }
 
 - (void)dealloc
 {
-  [application release];
-  [path release];
-  [binary release];
-  [host release];
-  [target release];
-  [super dealloc];
+  RELEASE (application);
+  RELEASE (path);
+  RELEASE (binary);
+  RELEASE (host);
+  RELEASE (target);
+  DEALLOC;
 }
 
 @end
@@ -129,7 +129,7 @@
   FVLaunchRequest *request = [[FVLaunchRequest alloc] initWithApplication:application
       file:path target:target selector:selector];
   [NSThread detachNewThreadSelector:@selector (run) toTarget:request withObject:nil];
-  [request release];
+  RELEASE (request);
 }
 
 + (NSArray *)applicationsForFile:(NSString *)path

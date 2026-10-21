@@ -42,14 +42,14 @@
 
 - (void)open:(id)sender
 {
-  [openedPaths release];
+  RELEASE (openedPaths);
   openedPaths = [[self selectedPaths] copy];
 }
 
 - (void)dealloc
 {
-  [openedPaths release];
-  [super dealloc];
+  RELEASE (openedPaths);
+  DEALLOC;
 }
 
 @end
@@ -114,7 +114,7 @@ Capture (NSView *view, NSString *file)
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -216,13 +216,13 @@ main (void)
   Capture ([[controller window] contentView], @"obj/tests/unbroken-filename.png");
   [[controller window] close];
   Tick (.1);
-  [controller release];
-  [application release];
+  RELEASE (controller);
+  RELEASE (application);
   [defaults removeObjectForKey:@"ShowFilenameTooltips"];
   [defaults removeObjectForKey:@"ShowThumbnails"];
   CHECK ([[NSFileManager defaultManager] removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u filename and tooltip assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

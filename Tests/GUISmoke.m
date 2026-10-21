@@ -116,7 +116,7 @@ CheckLayout (FVWindow *controller)
 static void
 AnswerNextDialog (NSString *name)
 {
-  FVDialogAnswer *answer = [[[FVDialogAnswer alloc] init] autorelease];
+  FVDialogAnswer *answer = AUTORELEASE ([[FVDialogAnswer alloc] init]);
   NSTimer *timer = [NSTimer timerWithTimeInterval:.1
                                            target:answer
                                          selector:@selector (answer:)
@@ -273,7 +273,7 @@ CheckClickJitter (FVWindow *controller)
   [matrix mouseDown:down];
   CHECK (dragStarts == 1);
   [matrix removeFromSuperview];
-  [matrix release];
+  RELEASE (matrix);
 
   FVIconDragProbe *icons = [[FVIconDragProbe alloc] initWithOwner:controller];
   [[window contentView] addSubview:icons];
@@ -292,8 +292,8 @@ CheckClickJitter (FVWindow *controller)
   [icons mouseDragged:MouseEvent (window, NSLeftMouseDragged, drag)];
   CHECK (dragStarts == 2);
   [icons removeFromSuperview];
-  [icons release];
-  [window release];
+  RELEASE (icons);
+  RELEASE (window);
 
   /* Drag a previously unselected list row downward, without a selection click. */
   Action (controller, @"listMode:");
@@ -355,7 +355,7 @@ WaitForItem (FVWindow *controller, NSString *file, BOOL present, NSUInteger size
 int
 main (void)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   [NSApp finishLaunching];
   char temp[] = "/tmp/fileviewer-gui-XXXXXX";
@@ -388,7 +388,7 @@ main (void)
                   backing:NSBackingStoreBuffered
                     defer:NO];
   [savedWindow saveFrameUsingName:@"FileViewer"];
-  [savedWindow release];
+  RELEASE (savedWindow);
   FVWindow *window = [[FVWindow alloc] initWithPath:root];
   CHECK ([[[window valueForKey:@"activityStatus"] stringValue] isEqual:@"Loading…"]);
   [window showWindow:nil];
@@ -546,11 +546,11 @@ main (void)
   [other refresh:nil];
   [[other window] close];
   Tick (.3);
-  [window release];
-  [other release];
+  RELEASE (window);
+  RELEASE (other);
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: %u GUI assertions", checks);
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 

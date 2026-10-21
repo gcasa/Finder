@@ -363,7 +363,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
       kind = [action copy];
       sources = [paths copy];
       destination = [folder copy];
-      target = [receiver retain];
+      target = RETAIN (receiver);
       notes = [[NSMutableArray alloc] init];
     }
   return self;
@@ -371,13 +371,13 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
 
 - (void)dealloc
 {
-  [kind release];
-  [sources release];
-  [destination release];
-  [target release];
-  [policy release];
-  [notes release];
-  [super dealloc];
+  RELEASE (kind);
+  RELEASE (sources);
+  RELEASE (destination);
+  RELEASE (target);
+  RELEASE (policy);
+  RELEASE (notes);
+  DEALLOC;
 }
 
 - (void)cancel
@@ -627,7 +627,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
 
 - (void)run
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   NSMutableArray *completed = [NSMutableArray array], *failed = [NSMutableArray array],
                  *skipped = [NSMutableArray array], *undo = [NSMutableArray array];
   NSUInteger i;
@@ -713,7 +713,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
               NSString *choice = [request objectForKey:@"choice"];
               if ([[request objectForKey:@"apply"] boolValue])
                 {
-                  [policy release];
+                  RELEASE (policy);
                   policy = [choice copy];
                 }
               if ([choice isEqual:@"skip"])
@@ -793,7 +793,7 @@ FVRemoveVerified (NSString *path, NSDictionary *manifest, NSString *relative, FV
   [target performSelectorOnMainThread:@selector (operationFinished:)
                            withObject:result
                         waitUntilDone:NO];
-  [pool drain];
+  RELEASE (pool);
 }
 
 @end

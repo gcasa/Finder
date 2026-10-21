@@ -25,7 +25,7 @@ static void
 FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArray *keys)
 {
   id<NSMenuItem> parent = [root addItemWithTitle:title action:NULL keyEquivalent:@""];
-  NSMenu *menu = [[[NSMenu alloc] initWithTitle:title] autorelease];
+  NSMenu *menu = AUTORELEASE ([[NSMenu alloc] initWithTitle:title]);
   NSUInteger i;
   for (i = 0; i < [labels count]; i++)
     [menu addItemWithTitle:[labels objectAtIndex:i]
@@ -44,7 +44,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   NSImage *icon = [NSImage imageNamed:@"FileViewer.png"];
   if (icon)
     [NSApp setApplicationIconImage:icon];
-  NSMenu *menu = [[[NSMenu alloc] initWithTitle:@"FileViewer"] autorelease];
+  NSMenu *menu = AUTORELEASE ([[NSMenu alloc] initWithTitle:@"FileViewer"]);
   [menu addItemWithTitle:@"About FileViewer"
                   action:@selector (orderFrontStandardAboutPanel:)
            keyEquivalent:@""];
@@ -105,7 +105,7 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
   FVWindow *controller = [[FVWindow alloc] initWithPath:value];
   [windows addObject:controller];
   [controller showWindow:self];
-  [controller release];
+  RELEASE (controller);
 }
 
 - (BOOL)application:(NSApplication *)app openFile:(NSString *)filename
@@ -202,8 +202,8 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
       [[preferencesPanel contentView] addSubview:hiddenFilesCheckbox];
       [[NSNotificationCenter defaultCenter] addObserver:self
           selector:@selector (hiddenFilesPreferencesChanged:) name:@"FVHiddenFilesChanged" object:nil];
-      NSTextField *colorLabel = [[[NSTextField alloc]
-          initWithFrame:NSMakeRect (24, 78, 260, 24)] autorelease];
+      NSTextField *colorLabel = AUTORELEASE ([[NSTextField alloc]
+          initWithFrame:NSMakeRect (24, 78, 260, 24)]);
       [colorLabel setStringValue:@"File viewer background:"];
       [colorLabel setEditable:NO];
       [colorLabel setSelectable:NO];
@@ -215,8 +215,8 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
       [backgroundColorWell setTarget:self];
       [backgroundColorWell setAction:@selector (changeBackgroundColor:)];
       [[preferencesPanel contentView] addSubview:backgroundColorWell];
-      NSTextField *label = [[[NSTextField alloc]
-          initWithFrame:NSMakeRect (24, 20, 380, 45)] autorelease];
+      NSTextField *label = AUTORELEASE ([[NSTextField alloc]
+          initWithFrame:NSMakeRect (24, 20, 380, 45)]);
       [label setStringValue:@"Changes apply to all open windows."];
       [label setEditable:NO];
       [label setSelectable:NO];
@@ -287,15 +287,15 @@ FVMenu (NSMenu *root, NSString *title, NSArray *labels, NSArray *actions, NSArra
 - (void)dealloc
 {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [backgroundColorWell release];
-  [hiddenFilesCheckbox release];
-  [excludeRunCheckbox release];
-  [thumbnailCheckbox release];
-  [filenameTooltipCheckbox release];
-  [preferencesPanel release];
-  [windows release];
-  [pendingPaths release];
-  [super dealloc];
+  RELEASE (backgroundColorWell);
+  RELEASE (hiddenFilesCheckbox);
+  RELEASE (excludeRunCheckbox);
+  RELEASE (thumbnailCheckbox);
+  RELEASE (filenameTooltipCheckbox);
+  RELEASE (preferencesPanel);
+  RELEASE (windows);
+  RELEASE (pendingPaths);
+  DEALLOC;
 }
 
 @end

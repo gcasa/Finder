@@ -23,13 +23,13 @@
 int
 main (int argc, const char **argv)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   [NSApplication sharedApplication];
   FVApplication *delegate = [[FVApplication alloc] init];
   [NSApp setDelegate:delegate];
   [NSApp run];
-  [delegate release];
-  [pool drain];
+  RELEASE (delegate);
+  RELEASE (pool);
   return 0;
 }
 

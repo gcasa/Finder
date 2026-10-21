@@ -41,10 +41,10 @@
 
 - (void)dealloc
 {
-  [selection release];
-  [rowOffsets release];
-  [mouseDownPath release];
-  [super dealloc];
+  RELEASE (selection);
+  RELEASE (rowOffsets);
+  RELEASE (mouseDownPath);
+  DEALLOC;
 }
 
 - (BOOL)isFlipped
@@ -75,7 +75,7 @@
 
 - (NSDictionary *)labelAttributesForSelection:(BOOL)selected
 {
-  NSMutableParagraphStyle *style = [[[NSMutableParagraphStyle alloc] init] autorelease];
+  NSMutableParagraphStyle *style = AUTORELEASE ([[NSMutableParagraphStyle alloc] init]);
   [style setAlignment:NSCenterTextAlignment];
   [style setLineBreakMode:selected ? NSLineBreakByWordWrapping : NSLineBreakByTruncatingMiddle];
   return [NSDictionary dictionaryWithObjectsAndKeys:
@@ -234,7 +234,7 @@
     }
   else
     {
-      [mouseDownPath release];
+      RELEASE (mouseDownPath);
       mouseDownPath = i >= 0 ? [[[[owner items] objectAtIndex:i] path] copy] : nil;
     }
   mouseDownPoint = [event locationInWindow];

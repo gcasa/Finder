@@ -80,11 +80,11 @@ Tick (double seconds)
 int
 main (int argc, char **argv)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  CREATE_AUTORELEASE_POOL (pool);
   if (argc == 4)
     {
       NSConnection *connection = [NSConnection defaultConnection];
-      [connection setRootObject:[[[FVSlowViewer alloc] init] autorelease]];
+      [connection setRootObject:AUTORELEASE ([[FVSlowViewer alloc] init])];
       CHECK ([connection registerName:[NSString stringWithUTF8String:argv[2]]]);
       CHECK ([@"" writeToFile:[NSString stringWithUTF8String:argv[3]]
                   atomically:YES encoding:NSUTF8StringEncoding error:NULL]);
@@ -140,10 +140,10 @@ main (int argc, char **argv)
   [timer invalidate];
   [server terminate];
   [server waitUntilExit];
-  [observer release];
+  RELEASE (observer);
   CHECK ([fm removeItemAtPath:root error:NULL]);
   NSLog (@"PASS: slow viewer leaves the UI run loop responsive; completion arrives on main thread");
-  [pool drain];
+  RELEASE (pool);
   return 0;
 }
 
